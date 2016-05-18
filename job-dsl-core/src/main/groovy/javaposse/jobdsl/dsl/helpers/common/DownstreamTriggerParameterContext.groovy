@@ -11,6 +11,7 @@ import javaposse.jobdsl.dsl.AbstractExtensibleContext
 class DownstreamTriggerParameterContext extends AbstractExtensibleContext {
     Map<String, Boolean> booleanParams = [:]
     boolean sameNode
+    boolean sameNodeAsPrevious
     boolean currentBuild
     String nodeLabelParam
     String nodeLabel
@@ -45,6 +46,13 @@ class DownstreamTriggerParameterContext extends AbstractExtensibleContext {
      */
     void sameNode() {
         this.sameNode = true
+    }
+
+    /**
+     * Uses the same node for the triggered build that was used for previous build of triggered project
+     */
+    void sameNodeAsPrevious() {
+        this.sameNodeAsPrevious = true
     }
 
     /**
@@ -129,6 +137,10 @@ class DownstreamTriggerParameterContext extends AbstractExtensibleContext {
 
         if (sameNode) {
             result << new NodeBuilder().'hudson.plugins.parameterizedtrigger.NodeParameters'()
+        }
+
+        if (sameNodeAsPrevious) {
+            result << new NodeBuilder().'com.tikal.jenkins.plugins.multijob.node.SameNodeAsPrevParameters'()
         }
 
         if (currentBuild) {

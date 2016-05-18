@@ -209,6 +209,12 @@ class PhaseJobContext extends AbstractContext {
         paramTrigger.sameNode = nodeParam
     }
 
+    @Deprecated
+    void sameNodeAsPrevious(boolean nodeParam = true) {
+        jobManagement.logDeprecationWarning()
+        paramTrigger.sameNodeAsPrevious = nodeParam
+    }
+
     /**
      * Specifies a Groovy filter expression that restricts the subset of combinations that the downstream project will
      * run.
