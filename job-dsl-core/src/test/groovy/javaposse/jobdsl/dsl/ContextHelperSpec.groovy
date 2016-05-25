@@ -168,7 +168,8 @@ class ContextHelperSpec extends Specification {
         then:
         NodeList permissions = root.builders[0].'hudson.security.AuthorizationMatrixProperty'[0].permission
         permissions.size() == 2
-        permissions[0].text() == 'hudson.model.Item.Configure:jill'
+        permissions[0].children().size() == 2
+        permissions[0].children()[0] == 'hudson.model.Item.Configure:jill'
         permissions[0].header.size() == 1
         permissions[0].header[0].text() == 'My Perm'
         permissions[1].text() == 'hudson.model.Item.Configure:jack'
@@ -245,5 +246,23 @@ class ContextHelperSpec extends Specification {
         assert scmNode.browser[1].attributes()['class'] == 'hudson.plugins.git.browser.GitoriusWeb'
         assert scmNode.browser[1].url.size() == 1
         assert scmNode.browser[1].url[0].value() == 'https://github.com/foo/baz'
+    }
+
+    def 'conversion to named node'() {
+        Node node = new Node(null, 'org.example.CustomType', [foo: 'bar'])
+        node.appendNode('test', 'value')
+
+        when:
+        Node namedNode = ContextHelper.toNamedNode('example', node)
+
+        then:
+        with(namedNode) {
+            name() == 'example'
+            attributes().size() == 2
+            attribute('class') == 'org.example.CustomType'
+            attribute('foo') == 'bar'
+            children().size() == 1
+            test[0].text() == 'value'
+        }
     }
 }

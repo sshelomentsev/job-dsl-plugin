@@ -1604,7 +1604,7 @@ class PublisherContextSpec extends Specification {
             fauxProjectPath 'faux path'
             perFileDisplayLimit 51
             checkstyle(10, 11, 10, 'test-report/*.xml')
-            jshint(10, 11, 10, 'test-report/*.xml')
+            jshint(0, 0, 0, 'test-report/*.xml')
             findbugs(12, 13, 12)
         }
 
@@ -1629,9 +1629,9 @@ class PublisherContextSpec extends Specification {
         def jshintNode = typeConfigsNode.entry.find { it.string[0].value() == 'jshint' }
         jshintNode != null
         jshintNode.'hudson.plugins.violations.TypeConfig'[0].type[0].value() == 'jshint'
-        jshintNode.'hudson.plugins.violations.TypeConfig'[0].min[0].value() == '10'
-        jshintNode.'hudson.plugins.violations.TypeConfig'[0].max[0].value() == '11'
-        jshintNode.'hudson.plugins.violations.TypeConfig'[0].unstable[0].value() == '10'
+        jshintNode.'hudson.plugins.violations.TypeConfig'[0].min[0].value() == '0'
+        jshintNode.'hudson.plugins.violations.TypeConfig'[0].max[0].value() == '0'
+        jshintNode.'hudson.plugins.violations.TypeConfig'[0].unstable[0].value() == '0'
         jshintNode.'hudson.plugins.violations.TypeConfig'[0].usePattern[0].value() == 'true'
         jshintNode.'hudson.plugins.violations.TypeConfig'[0].pattern[0].value() == 'test-report/*.xml'
         def findbugsNode = typeConfigsNode.entry.find { it.string[0].value() == 'findbugs' }
@@ -3053,7 +3053,7 @@ class PublisherContextSpec extends Specification {
 
     def 'flowdock with no tokens'() {
         when:
-        context.flowdock(null)
+        context.flowdock((String[]) null)
 
         then:
         thrown(DslScriptException)
@@ -3525,7 +3525,7 @@ class PublisherContextSpec extends Specification {
                 condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
                 condition[0].arg1[0].value() == 'foo'
                 condition[0].arg2[0].value() == 'bar'
-                condition[0].ignoreCase[0].value() == 'false'
+                condition[0].ignoreCase[0].value() == false
                 runner[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail'
                 runner[0].value().empty
                 publisherList[0].children().size() == 1
@@ -3576,7 +3576,7 @@ class PublisherContextSpec extends Specification {
                 condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
                 condition[0].arg1[0].value() == 'foo'
                 condition[0].arg2[0].value() == 'bar'
-                condition[0].ignoreCase[0].value() == 'false'
+                condition[0].ignoreCase[0].value() == false
                 runner[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail'
                 runner[0].value().empty
                 publisherList[0].children().size() == 1
@@ -3628,7 +3628,7 @@ class PublisherContextSpec extends Specification {
                 condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
                 condition[0].arg1[0].value() == 'foo'
                 condition[0].arg2[0].value() == 'bar'
-                condition[0].ignoreCase[0].value() == 'false'
+                condition[0].ignoreCase[0].value() == false
                 runner[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail'
                 runner[0].value().empty
                 publisherList[0].children().size() == 2
@@ -3757,7 +3757,7 @@ class PublisherContextSpec extends Specification {
                 condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
                 condition[0].arg1[0].value() == 'foo'
                 condition[0].arg2[0].value() == 'bar'
-                condition[0].ignoreCase[0].value() == 'false'
+                condition[0].ignoreCase[0].value() == false
                 runner[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$DontRun'
                 runner[0].value().empty
                 with(publisherList[0]) {
@@ -4877,6 +4877,7 @@ class PublisherContextSpec extends Specification {
             completeJobMessage[0].value() == ''
         }
         1 * jobManagement.requireMinimumPluginVersion('hipchat', '0.1.9')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'hipChat notification with all options'() {
@@ -4912,6 +4913,7 @@ class PublisherContextSpec extends Specification {
             completeJobMessage[0].value() == 'JOB DONE! $URL'
         }
         1 * jobManagement.requireMinimumPluginVersion('hipchat', '0.1.9')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'mattermost notification with no options'() {
@@ -5325,6 +5327,7 @@ class PublisherContextSpec extends Specification {
             customMessage.text() == ''
         }
         1 * jobManagement.requireMinimumPluginVersion('slack', '1.8')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'slackNotifications with all options'() {
@@ -5366,6 +5369,7 @@ class PublisherContextSpec extends Specification {
             customMessage.text() == 'testing customMessage'
         }
         1 * jobManagement.requireMinimumPluginVersion('slack', '1.8')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'debianPackage with no options'() {
@@ -6240,10 +6244,8 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraReleaseVersionUpdater'
             children().size() == 2
-            with(entries[0]) {
-                jiraProjectKey[0].value().empty
-                jiraRelease[0].value().empty
-            }
+            jiraProjectKey[0].value().empty
+            jiraRelease[0].value().empty
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
     }
@@ -6261,10 +6263,8 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraReleaseVersionUpdater'
             children().size() == 2
-            with(entries[0]) {
-                jiraProjectKey[0].value() == expectedKey
-                jiraRelease[0].value() == expectedRelease
-            }
+            jiraProjectKey[0].value() == expectedKey
+            jiraRelease[0].value() == expectedRelease
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
 
@@ -6287,12 +6287,10 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraIssueMigrator'
             children().size() == 4
-            with(entries[0]) {
-                jiraProjectKey[0].value().empty
-                jiraRelease[0].value().empty
-                jiraReplaceVersion[0].value().empty
-                jiraQuery[0].value().empty
-            }
+            jiraProjectKey[0].value().empty
+            jiraRelease[0].value().empty
+            jiraReplaceVersion[0].value().empty
+            jiraQuery[0].value().empty
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
     }
@@ -6312,12 +6310,10 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraIssueMigrator'
             children().size() == 4
-            with(entries[0]) {
-                jiraProjectKey[0].value() == expectedKey
-                jiraRelease[0].value() == expectedRelease
-                jiraReplaceVersion[0].value() == expectedReplace
-                jiraQuery[0].value() == expectedQuery
-            }
+            jiraProjectKey[0].value() == expectedKey
+            jiraRelease[0].value() == expectedRelease
+            jiraReplaceVersion[0].value() == expectedReplace
+            jiraQuery[0].value() == expectedQuery
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
 
@@ -6341,10 +6337,8 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraVersionCreator'
             children().size() == 2
-            with(entries[0]) {
-                jiraProjectKey[0].value().empty
-                jiraVersion[0].value().empty
-            }
+            jiraProjectKey[0].value().empty
+            jiraVersion[0].value().empty
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
     }
@@ -6362,10 +6356,8 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraVersionCreator'
             children().size() == 2
-            with(entries[0]) {
-                jiraProjectKey[0].value() == expectedKey
-                jiraVersion[0].value() == expectedVersion
-            }
+            jiraProjectKey[0].value() == expectedKey
+            jiraVersion[0].value() == expectedVersion
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
 
@@ -6388,12 +6380,10 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraCreateIssueNotifier'
             children().size() == 4
-            with(entries[0]) {
-                projectKey[0].value().empty
-                testDescription[0].value().empty
-                assignee[0].value().empty
-                component[0].value().empty
-            }
+            projectKey[0].value().empty
+            testDescription[0].value().empty
+            assignee[0].value().empty
+            component[0].value().empty
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
     }
@@ -6413,12 +6403,10 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.jira.JiraCreateIssueNotifier'
             children().size() == 4
-            with(entries[0]) {
-                projectKey[0].value() == expectedKey
-                testDescription[0].value() == expectedDesc
-                assignee[0].value() == expectedAssignee
-                component[0].value() == expectedComponent
-            }
+            projectKey[0].value() == expectedKey
+            testDescription[0].value() == expectedDesc
+            assignee[0].value() == expectedAssignee
+            component[0].value() == expectedComponent
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
 
@@ -6468,13 +6456,11 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.logparser.LogParserPublisher'
             children().size() == 5
-            with(entries[0]) {
-                unstableOnWarning[0].value() == true
-                failBuildOnError[0].value() == true
-                showGraphs[0].value() == true
-                useProjectRule[0].value() == true
-                projectRulePath[0].value() == '/locations'
-            }
+            unstableOnWarning[0].value() == true
+            failBuildOnError[0].value() == true
+            showGraphs[0].value() == true
+            useProjectRule[0].value() == true
+            projectRulePath[0].value() == '/locations'
         }
         1 * jobManagement.requireMinimumPluginVersion('log-parser', '2.0')
     }
@@ -6491,13 +6477,11 @@ class PublisherContextSpec extends Specification {
         with(context.publisherNodes[0]) {
             name() == 'hudson.plugins.logparser.LogParserPublisher'
             children().size() == 5
-            with(entries[0]) {
-                unstableOnWarning[0].value() == false
-                failBuildOnError[0].value() == false
-                showGraphs[0].value() == false
-                useProjectRule[0].value() == false
-                parsingRulesPath[0].value() == '/locations'
-            }
+            unstableOnWarning[0].value() == false
+            failBuildOnError[0].value() == false
+            showGraphs[0].value() == false
+            useProjectRule[0].value() == false
+            parsingRulesPath[0].value() == '/locations'
         }
 
         1 * jobManagement.requireMinimumPluginVersion('log-parser', '2.0')

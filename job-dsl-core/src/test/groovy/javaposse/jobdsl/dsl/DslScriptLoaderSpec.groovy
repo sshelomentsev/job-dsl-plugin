@@ -1,6 +1,7 @@
 package javaposse.jobdsl.dsl
 
 import javaposse.jobdsl.dsl.jobs.FreeStyleJob
+import org.custommonkey.xmlunit.XMLUnit
 import spock.lang.Ignore
 import spock.lang.Specification
 
@@ -46,6 +47,16 @@ class DslScriptLoaderSpec extends Specification {
 
         when:
         def jobs = dslScriptLoader.runScripts([request]).jobs
+
+        then:
+        jobs != null
+        jobs.size() == 1
+        jobs.iterator().next().jobName == 'test'
+    }
+
+    def 'run engine for single script'() {
+        when:
+        def jobs = dslScriptLoader.runScript(new URL(resourcesDir, 'simple.dsl').text).jobs
 
         then:
         jobs != null
@@ -247,8 +258,7 @@ folder('folder-b') {
         dslScriptLoader.runScripts([request])
 
         then:
-        jm.savedConfigs['example'] ==
-                getClass().getResource('/JENKINS_32941.xml').text.replace(System.getProperty('line.separator'), '\n')
+        XMLUnit.compareXML(getClass().getResource('/JENKINS_32941.xml').text, jm.savedConfigs['example']).similar()
     }
 
     def 'script name which is not a valid class name'() {

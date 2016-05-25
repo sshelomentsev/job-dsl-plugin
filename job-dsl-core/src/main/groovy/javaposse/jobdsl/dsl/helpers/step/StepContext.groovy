@@ -1,5 +1,6 @@
 package javaposse.jobdsl.dsl.helpers.step
 
+import groovy.transform.PackageScope
 import javaposse.jobdsl.dsl.ConfigFileType
 import javaposse.jobdsl.dsl.ContextHelper
 import javaposse.jobdsl.dsl.ContextType
@@ -498,7 +499,7 @@ class StepContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'copyartifact', minimumVersion = '1.31')
     void copyArtifacts(String jobName, @DslContext(CopyArtifactContext) Closure copyArtifactClosure = null) {
-        CopyArtifactContext copyArtifactContext = new CopyArtifactContext(jobManagement)
+        CopyArtifactContext copyArtifactContext = new CopyArtifactContext(jobManagement, item)
         ContextHelper.executeInContext(copyArtifactClosure, copyArtifactContext)
 
         Node copyArtifactNode = new NodeBuilder().'hudson.plugins.copyartifact.CopyArtifact' {
@@ -606,13 +607,12 @@ class StepContext extends AbstractExtensibleContext {
         ConditionalStepsContext conditionalStepsContext = new ConditionalStepsContext(jobManagement, newInstance())
         ContextHelper.executeInContext(conditionalStepsClosure, conditionalStepsContext)
 
-        stepNodes << new NodeBuilder().'org.jenkinsci.plugins.conditionalbuildstep.ConditionalBuilder' {
-            runCondition(class: conditionalStepsContext.runCondition.conditionClass) {
-                conditionalStepsContext.runCondition.addArgs(delegate)
-            }
+        Node builder = new NodeBuilder().'org.jenkinsci.plugins.conditionalbuildstep.ConditionalBuilder' {
             runner(class: conditionalStepsContext.runnerClass)
             conditionalbuilders(conditionalStepsContext.stepContext.stepNodes)
         }
+        builder.append(ContextHelper.toNamedNode('runCondition', conditionalStepsContext.runCondition))
+        stepNodes << builder
     }
 
     /**
@@ -1259,5 +1259,13 @@ class StepContext extends AbstractExtensibleContext {
      */
     protected StepContext newInstance() {
         new StepContext(jobManagement, item)
+    }
+
+    /**
+     * @since 1.47
+     */
+    @PackageScope
+    Item getItem() {
+        super.item
     }
 }

@@ -34,7 +34,7 @@ class ScmContext extends AbstractExtensibleContext {
 
     @Override
     protected void addExtensionNode(Node node) {
-        scmNodes << toNamedNode('scm', node)
+        scmNodes << ContextHelper.toNamedNode('scm', node)
     }
 
     /**
@@ -294,7 +294,6 @@ class ScmContext extends AbstractExtensibleContext {
     @RequiresPlugin(id = 'perforce')
     @Deprecated
     void p4(String viewspec, Closure configure = null) {
-        jobManagement.logDeprecationWarning()
         p4(viewspec, 'rolem', '', configure)
     }
 

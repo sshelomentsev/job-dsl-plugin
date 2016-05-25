@@ -98,8 +98,6 @@ class PublisherContext extends AbstractExtensibleContext {
     @Deprecated
     void extendedEmail(String recipients, String subjectTemplate, String contentTemplate,
                        @DslContext(EmailContext) Closure emailClosure = null) {
-        jobManagement.logDeprecationWarning()
-
         EmailContext emailContext = new EmailContext()
         ContextHelper.executeInContext(emailClosure, emailContext)
 
@@ -1111,22 +1109,18 @@ class PublisherContext extends AbstractExtensibleContext {
         publisherNodes << new NodeBuilder().'org.jenkins__ci.plugins.flexible__publish.FlexiblePublisher' {
             delegate.publishers {
                 if (context.actions) {
-                    'org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher' {
-                        condition(class: context.condition.conditionClass) {
-                            context.condition.addArgs(delegate)
-                        }
+                    Node publisher = 'org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher' {
                         publisherList(context.actions)
                         runner(class: 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail')
                     }
+                    publisher.append(ContextHelper.toNamedNode('condition', context.condition))
                 }
                 context.conditionalActions.each { ConditionalActionsContext conditionalActionsContext ->
-                    'org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher' {
-                        condition(class: conditionalActionsContext.runCondition.conditionClass) {
-                            conditionalActionsContext.runCondition.addArgs(delegate)
-                        }
+                    Node publisher = 'org.jenkins__ci.plugins.flexible__publish.ConditionalPublisher' {
                         publisherList(conditionalActionsContext.actions)
                         runner(class: conditionalActionsContext.runnerClass)
                     }
+                    publisher.append(ContextHelper.toNamedNode('condition', conditionalActionsContext.runCondition))
                 }
             }
         }
@@ -1489,8 +1483,6 @@ class PublisherContext extends AbstractExtensibleContext {
     @Deprecated
     @RequiresPlugin(id = 'ghprb', minimumVersion = '1.26')
     void mergePullRequest(@DslContext(PullRequestPublisherContext) Closure contextClosure = null) {
-        jobManagement.logDeprecationWarning()
-
         PullRequestPublisherContext pullRequestPublisherContext = new PullRequestPublisherContext(jobManagement)
         ContextHelper.executeInContext(contextClosure, pullRequestPublisherContext)
 
@@ -1534,6 +1526,7 @@ class PublisherContext extends AbstractExtensibleContext {
      * @since 1.33
      */
     @RequiresPlugin(id = 'hipchat', minimumVersion = '0.1.9')
+    @Deprecated
     void hipChat(@DslContext(HipChatPublisherContext) Closure hipChatClosure = null) {
         HipChatPublisherContext hipChatContext = new HipChatPublisherContext()
         ContextHelper.executeInContext(hipChatClosure, hipChatContext)
@@ -1689,6 +1682,7 @@ class PublisherContext extends AbstractExtensibleContext {
      * @since 1.36
      */
     @RequiresPlugin(id = 'slack', minimumVersion = '1.8')
+    @Deprecated
     void slackNotifications(@DslContext(SlackNotificationsContext) Closure slackNotificationsClosure) {
         SlackNotificationsContext context = new SlackNotificationsContext()
         ContextHelper.executeInContext(slackNotificationsClosure, context)

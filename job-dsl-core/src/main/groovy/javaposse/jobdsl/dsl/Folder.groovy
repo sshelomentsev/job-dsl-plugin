@@ -1,6 +1,7 @@
 package javaposse.jobdsl.dsl
 
 import javaposse.jobdsl.dsl.helpers.AuthorizationContext
+import javaposse.jobdsl.dsl.helpers.properties.FolderPropertiesContext
 
 /**
  * DSL element representing a Jenkins folder.
@@ -59,9 +60,24 @@ class Folder extends Item {
         }
     }
 
+    /**
+     * Adds custom properties to the folder.
+     *
+     * @since 1.47
+     */
+    void properties(@DslContext(FolderPropertiesContext) Closure closure) {
+        FolderPropertiesContext context = new FolderPropertiesContext(jobManagement, this)
+        ContextHelper.executeInContext(closure, context)
+
+        configure { Node project ->
+            context.propertiesNodes.each {
+                project / 'properties' << it
+            }
+        }
+    }
+
     @Deprecated
     protected void execute(Closure rootClosure) {
-        jobManagement.logDeprecationWarning()
         configure(rootClosure)
     }
 }

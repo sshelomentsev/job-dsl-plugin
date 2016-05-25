@@ -8,19 +8,20 @@ import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.dsl.RequiresPlugin
 import javaposse.jobdsl.dsl.helpers.step.RunConditionContext
 import javaposse.jobdsl.dsl.helpers.step.StepContext
-import javaposse.jobdsl.dsl.helpers.step.condition.AlwaysRunCondition
-import javaposse.jobdsl.dsl.helpers.step.condition.RunCondition
-import javaposse.jobdsl.dsl.helpers.step.condition.RunConditionFactory
 
 class FlexiblePublisherContext extends AbstractContext {
     protected final Item item
-    RunCondition condition = new AlwaysRunCondition()
+    Node condition
     List<Node> actions = []
     List<ConditionalActionsContext> conditionalActions = []
 
     FlexiblePublisherContext(JobManagement jobManagement, Item item) {
         super(jobManagement)
         this.item = item
+
+        RunConditionContext context = new RunConditionContext(jobManagement, item)
+        context.alwaysRun()
+        condition = context.condition
     }
 
     /**
@@ -39,9 +40,9 @@ class FlexiblePublisherContext extends AbstractContext {
      */
     @Deprecated
     void condition(@DslContext(RunConditionContext) Closure closure) {
-        jobManagement.logDeprecationWarning()
-
-        condition = RunConditionFactory.of(jobManagement, closure)
+        RunConditionContext context = new RunConditionContext(jobManagement, item)
+        ContextHelper.executeInContext(closure, context)
+        condition = context.condition
     }
 
     /**
@@ -50,8 +51,6 @@ class FlexiblePublisherContext extends AbstractContext {
     @RequiresPlugin(id = 'any-buildstep')
     @Deprecated
     void step(@DslContext(StepContext) Closure closure) {
-        jobManagement.logDeprecationWarning()
-
         StepContext stepContext = new StepContext(jobManagement, item)
         ContextHelper.executeInContext(closure, stepContext)
         actions.addAll(stepContext.stepNodes)
@@ -62,8 +61,6 @@ class FlexiblePublisherContext extends AbstractContext {
      */
     @Deprecated
     void publisher(@DslContext(PublisherContext) Closure closure) {
-        jobManagement.logDeprecationWarning()
-
         PublisherContext publisherContext = new PublisherContext(jobManagement, item)
         ContextHelper.executeInContext(closure, publisherContext)
         actions.addAll(publisherContext.publisherNodes)

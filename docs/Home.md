@@ -19,11 +19,47 @@ Not all of the 1000+ Jenkins plugins are supported by the built-in DSL. If the
 
 If you want to get fancy you'll want to read up on [[configure block|The Configure Block]], which gives you direct access to the `config.xml`.
 
-Have a look at the [Jenkins Job DSL Gradle example](https://github.com/sheehan/job-dsl-gradle-example) to see how to organize a SCM repository for Job DSL scripts.
+Have a look at the [Jenkins Job DSL Gradle example](https://github.com/sheehan/job-dsl-gradle-example) to see how to
+organize a SCM repository for Job DSL scripts, including [[tests for DSL scripts|Testing DSL Scripts]] and
+[[IDE Support]].
 
 Browse the Jenkins issue tracker to see any [open issues](https://issues.jenkins-ci.org/issues/?filter=15140).
 
 ## Release Notes
+* 1.47 (May 24 2016)
+ * Improved support for [[Testing DSL Scripts]]
+   ([JENKINS-29091](https://issues.jenkins-ci.org/browse/JENKINS-29091))
+ * Allow extensions for views
+   ([JENKINS-29510](https://issues.jenkins-ci.org/browse/JENKINS-29510))
+ * Enhanced support for the 
+   [CloudBees Folders Plugin](https://wiki.jenkins-ci.org/display/JENKINS/CloudBees+Folders+Plugin)
+   ([JENKINS-31488](https://issues.jenkins-ci.org/browse/JENKINS-31488))
+ * Enhanced support for the
+   [Parameterized Trigger Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Parameterized+Trigger+Plugin)
+  ([JENKINS-34552](https://issues.jenkins-ci.org/browse/JENKINS-34552))
+ * Enhanced support for the [Branch API Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Branch+API+Plugin)
+   ([#846](https://github.com/jenkinsci/job-dsl-plugin/pull/846))
+ * Enhanced support for the [Copy Artifact Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Copy+Artifact+Plugin)
+   ([JENKINS-34720](https://issues.jenkins-ci.org/browse/JENKINS-34720))
+ * Enhanced support for the [Run Condition Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Run+Condition+Plugin)
+   ([JENKINS-34941](https://issues.jenkins-ci.org/browse/JENKINS-34941))
+ * Enhanced support for the [Gitlab Plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitLab+Plugin)
+   ([JENKINS-34534](https://issues.jenkins-ci.org/browse/JENKINS-34534))
+ * Fixed support for the [Violations Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Violations)
+   ([JENKINS-26086](https://issues.jenkins-ci.org/browse/JENKINS-26086))
+ * Support for the [Slack Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Slack+Plugin) is deprecated, see
+   [Migration](Migration#migrating-to-147)
+   ([JENKINS-34124](https://issues.jenkins-ci.org/browse/JENKINS-34124))
+ * Support for [HipChat Plugin](https://wiki.jenkins-ci.org/display/JENKINS/HipChat+Plugin) is deprecated, see
+   [Migration](Migration#migrating-to-147)
+   ([JENKINS-32502](https://issues.jenkins-ci.org/browse/JENKINS-32502))
+ * Support for the older versions of the [Gitlab Plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitLab+Plugin) is
+   deprecated, see [Migration](Migration#migrating-to-147)
+ * Added `pipelineJob` and `multibranchPipelineJob` as replacements for `workflowJob` and `multibranchWorkflowJob`, see
+   [Migration](Migration#migrating-to-147)
+   ([JENKINS-33325](https://issues.jenkins-ci.org/browse/JENKINS-33325))
+ * The enum `javaposse.jobdsl.dsl.helpers.step.condition.FileExistsCondition.BaseDir` is deprecated, see
+   [Migration](Migration#migrating-to-147)
 * 1.46 (May 08 2016)
  * Increased the minimum supported Jenkins version to 1.625
  * Added support for [[Automatically Generated DSL]]

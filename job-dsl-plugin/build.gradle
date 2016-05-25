@@ -1,5 +1,5 @@
 plugins {
-    id 'org.jenkins-ci.jpi' version '0.17.0'
+    id 'org.jenkins-ci.jpi' version '0.18.1'
 }
 
 description = 'Jenkins plugin to leverage job-dsl-core to programmatic create jobs from inside Jenkins.'
@@ -8,7 +8,7 @@ description = 'Jenkins plugin to leverage job-dsl-core to programmatic create jo
 def generatedSourcesDir = 'generated'
 
 jenkinsPlugin {
-    coreVersion = '1.625'
+    coreVersion = jenkinsVersion
     displayName = 'Job DSL'
     url = 'https://wiki.jenkins-ci.org/display/JENKINS/Job+DSL+Plugin'
     gitHubUrl = 'https://github.com/jenkinsci/job-dsl-plugin'
@@ -55,7 +55,7 @@ jpi {
             include 'build/dist/**'
         }
     }
-    dependsOn tasks.getByPath(':job-dsl-api-viewer:gulp_build')
+    dependsOn tasks.getByPath(':job-dsl-api-viewer:build')
 }
 
 dependencies {

@@ -37,14 +37,14 @@ installation.
     }
 
     repositories {
-        mavenCentral()
+        jcenter()
         maven {
-            url 'http://repo.jenkins-ci.org/releases/'
+            url 'https://repo.jenkins-ci.org/public/'
         }
     }
 
     dependencies {
-        compile 'org.jenkins-ci.plugins:job-dsl-core:1.46'
+        compile 'org.jenkins-ci.plugins:job-dsl-core:@version@'
     }
 
 In this example, the GroovyDSL script from above must be stored in `src/main/resources/idea.gdsl`.

@@ -1,3 +1,198 @@
+## Migrating to 1.47
+
+### Pipeline
+
+The Workflow Plugin has been renamed to [Pipeline Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Pipeline+Plugin).
+New `pipelineJob` and `multibranchPipelineJob` methods have been added as replacements for `workflowJob` and
+`multibranchWorkflowJob` which are [[deprecated|Deprecation-Policy]] and will be removed.
+
+DSL prior to 1.47
+```groovy
+workflowJob('example-1') {
+    definition {
+        cps {
+            script(readFileFromWorkspace('project-a-workflow.groovy'))
+            sandbox()
+        }
+    }
+}
+
+multibranchWorkflowJob('example-2') {
+    branchSources {
+        git {
+            remote('https://github.com/jenkinsci/job-dsl-plugin.git')
+            credentialsId('github-ci')
+            includes('JENKINS-*')
+        }
+    }
+    orphanedItemStrategy {
+        discardOldItems {
+            numToKeep(20)
+        }
+    }
+}
+```
+
+DSL since 1.47
+```groovy
+pipelineJob('example-1') {
+    definition {
+        cps {
+            script(readFileFromWorkspace('project-a-workflow.groovy'))
+            sandbox()
+        }
+    }
+}
+
+multibranchPipelineJob('example-2') {
+    branchSources {
+        git {
+            remote('https://github.com/jenkinsci/job-dsl-plugin.git')
+            credentialsId('github-ci')
+            includes('JENKINS-*')
+        }
+    }
+    orphanedItemStrategy {
+        discardOldItems {
+            numToKeep(20)
+        }
+    }
+}
+```
+ 
+### GitLab
+
+Support for versions older than 1.2 of the [Gitlab Plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitLab+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### Slack
+
+Support for the [Slack Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Slack+Plugin) is
+[[deprecated|Deprecation-Policy]] because it is incompatible with newer versions of that plugin. It has been replaced by
+the [[Automatically Generated DSL]].
+
+DSL prior to 1.47
+```groovy
+job('example') {
+    publishers {
+        slackNotifications {
+            projectChannel('Dev Team A')
+            notifyAborted()
+            notifyFailure()
+            notifyNotBuilt()
+            notifyUnstable()
+            notifyBackToNormal()
+        }
+    }
+}
+```
+
+DSL since 1.47
+```groovy
+job('example') {
+  publishers {
+    slackNotifier {
+      room('Dev Team A')
+      notifyAborted(true)
+      notifyFailure(true)
+      notifyNotBuilt(true)
+      notifyUnstable(true)
+      notifyBackToNormal(true)
+      notifySuccess(false)
+      notifyRepeatedFailure(false)
+      startNotification(false)
+      includeTestSummary(false)
+      includeCustomMessage(false)
+      customMessage(null)
+      buildServerUrl(null)
+      sendAs(null)
+      commitInfoChoice('NONE')
+      teamDomain(null)
+      authToken(null)
+    }
+  }
+}
+```
+
+### HipChat
+
+Support for the [HipChat Plugin](https://wiki.jenkins-ci.org/display/JENKINS/HipChat+Plugin) is
+[[deprecated|Deprecation-Policy]] because it is incompatible with newer versions of that plugin. It has been replaced by
+the [[Automatically Generated DSL]].
+
+DSL prior to 1.47
+```groovy
+job('example') {
+    publishers {
+        hipChat {
+            rooms('Dev Team A', 'QA')
+            notifyAborted()
+            notifyNotBuilt()
+            notifyUnstable()
+            notifyFailure()
+            notifyBackToNormal()
+        }
+    }
+}
+```
+
+DSL since 1.47
+```groovy
+job('example') {
+  publishers {
+    hipChatNotifier {
+      room('Dev Team A, QA')
+      matrixTriggerMode('ONLY_PARENT')
+      startJobMessage(null)
+      completeJobMessage(null)
+      token(null)
+      notifications {
+        notificationConfig {
+          notifyEnabled(true)
+          textFormat(true)
+          notificationType('ABORTED')
+          color('GRAY')
+          messageTemplate(null)
+        }
+        notificationConfig {
+          notifyEnabled(true)
+          textFormat(true)
+          notificationType('NOT_BUILT')
+          color('GRAY')
+          messageTemplate(null)
+        }
+        notificationConfig {
+          notifyEnabled(true)
+          textFormat(true)
+          notificationType('UNSTABLE')
+          color('YELLOW')
+          messageTemplate(null)
+        }
+        notificationConfig {
+          notifyEnabled(true)
+          textFormat(true)
+          notificationType('FAILURE')
+          color('RED')
+          messageTemplate(null)
+        }
+        notificationConfig {
+          notifyEnabled(true)
+          textFormat(true)
+          notificationType('BACK_TO_NORMAL')
+          color('GREEN')
+          messageTemplate(null)
+        }
+      }
+    }
+  }
+}
+```
+
+### Run Condition
+
+The enum `javaposse.jobdsl.dsl.helpers.step.condition.FileExistsCondition.BaseDir` is [[deprecated|Deprecation-Policy]]
+and will be removed. Use `javaposse.jobdsl.dsl.helpers.step.RunConditionContext.BaseDir` instead.
+
 ## Migrating to 1.46
 
 ### MultiJob

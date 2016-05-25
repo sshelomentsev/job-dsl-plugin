@@ -942,6 +942,24 @@ class StepContextSpec extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('jenkins-multijob-plugin', '1.32')
     }
 
+    def 'copyArtifacts with selector extension'() {
+        jobManagement.callExtension('foo', item, CopyArtifactSelectorContext) >> new Node(null, 'foo.Bar')
+
+        when:
+        context.copyArtifacts('upstream') {
+            buildSelector {
+                foo()
+            }
+        }
+
+        then:
+        with(context.stepNodes[0].selector[0]) {
+            attribute('class') == 'foo.Bar'
+            children().size() == 0
+        }
+        1 * jobManagement.requireMinimumPluginVersion('copyartifact', '1.31')
+    }
+
     def 'call minimal copyArtifacts'() {
         when:
         context.copyArtifacts('upstream')
@@ -2146,7 +2164,7 @@ class StepContextSpec extends Specification {
         matchCondition.attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
         matchCondition.arg1[0].value() == 'foo'
         matchCondition.arg2[0].value() == 'bar'
-        matchCondition.ignoreCase[0].value() == 'false'
+        matchCondition.ignoreCase[0].value() == false
         1 * jobManagement.requirePlugin('conditional-buildstep')
     }
 
@@ -2183,7 +2201,7 @@ class StepContextSpec extends Specification {
         condition.attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'
         condition.arg1[0].value() == 'foo'
         condition.arg2[0].value() == 'bar'
-        condition.ignoreCase[0].value() == 'false'
+        condition.ignoreCase[0].value() == false
 
         step.runner[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail'
 
@@ -2358,10 +2376,10 @@ class StepContextSpec extends Specification {
         'neverRun'         | []                       | 'org.jenkins_ci.plugins.run_condition.core.NeverRun'                  | [:]
         'booleanCondition' | ['someToken']            | 'org.jenkins_ci.plugins.run_condition.core.BooleanCondition'          | [token: 'someToken']
         'cause'            | ['userCause', true]      | 'org.jenkins_ci.plugins.run_condition.core.CauseCondition'            | [buildCause    : 'userCause',
-                                                                                                                                 exclusiveCause: 'true']
+                                                                                                                                 exclusiveCause: true]
         'stringsMatch'     | ['some1', 'some2', true] | 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'     | [arg1      : 'some1',
                                                                                                                                  arg2      : 'some2',
-                                                                                                                                 ignoreCase: 'true']
+                                                                                                                                 ignoreCase: true]
         'expression'       | ['exp', 'lab']           | 'org.jenkins_ci.plugins.run_condition.core.ExpressionCondition'       | [expression: 'exp',
                                                                                                                                  label     : 'lab']
         'time'             | [5, 30, 15, 25, true]    | 'org.jenkins_ci.plugins.run_condition.core.TimeCondition'             | [earliestHours  : 5,
@@ -3557,11 +3575,9 @@ class StepContextSpec extends Specification {
         with(context.stepNodes[0]) {
             name() == 'hudson.plugins.jira.JiraIssueUpdateBuilder'
             children().size() == 3
-            with(entries[0]) {
-                jqlSearch[0].value().empty
-                workflowActionName[0].value().empty
-                comment[0].value().empty
-            }
+            jqlSearch[0].value().empty
+            workflowActionName[0].value().empty
+            comment[0].value().empty
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
     }
@@ -3579,11 +3595,9 @@ class StepContextSpec extends Specification {
         with(context.stepNodes[0]) {
             name() == 'hudson.plugins.jira.JiraIssueUpdateBuilder'
             children().size() == 3
-            with(entries[0]) {
-                jqlSearch[0].value() == expectedJql
-                workflowActionName[0].value() == expectedWork
-                comment[0].value() == expectedCom
-            }
+            jqlSearch[0].value() == expectedJql
+            workflowActionName[0].value() == expectedWork
+            comment[0].value() == expectedCom
         }
         1 * jobManagement.requireMinimumPluginVersion('jira', '1.39')
 
