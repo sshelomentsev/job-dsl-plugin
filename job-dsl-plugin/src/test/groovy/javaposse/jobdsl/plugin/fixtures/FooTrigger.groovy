@@ -15,7 +15,7 @@ class FooTrigger extends Trigger<Job> {
     }
 
     @Extension
-    @Symbol('foo')
+    @Symbol(['foo', 'bar'])
     static class DescriptorImpl extends TriggerDescriptor {
         final String displayName = null
 

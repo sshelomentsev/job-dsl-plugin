@@ -24,11 +24,13 @@ Have a look at the [Jenkins Job DSL Gradle example](https://github.com/sheehan/j
 Browse the Jenkins issue tracker to see any [open issues](https://issues.jenkins-ci.org/issues/?filter=15140).
 
 ## Release Notes
-* 1.46 (unreleased)
+* 1.46 (May 08 2016)
+ * Increased the minimum supported Jenkins version to 1.625
  * Added support for [[Automatically Generated DSL]]
    ([#816](https://github.com/jenkinsci/job-dsl-plugin/pull/816))
  * Integrated the API Viewer into the plugin
    ([#822](https://github.com/jenkinsci/job-dsl-plugin/pull/822))
+ * Added a plugin dependency to the [Structs Plugin](https://github.com/jenkinsci/structs-plugin)
  * Added support for the [Maven Info Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Maven+Info+Plugin)
    ([JENKINS-32196](https://issues.jenkins-ci.org/browse/JENKINS-32196))
  * Added support for the [Log Parser Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Log+Parser+Plugin)
@@ -41,11 +43,25 @@ Browse the Jenkins issue tracker to see any [open issues](https://issues.jenkins
    ([JENKINS-33887](https://issues.jenkins-ci.org/browse/JENKINS-33887))
  * Added support for the [MSBuild Plugin](https://wiki.jenkins-ci.org/display/JENKINS/MSBuild+Plugin)
    ([JENKINS-33825](https://issues.jenkins-ci.org/browse/JENKINS-33825))
+ * Added support for the
+   [CloudBees GitHub Branch Source Plugin](https://wiki.jenkins-ci.org/display/JENKINS/CloudBees+GitHub+Branch+Source+Plugin)
+ * Added support for the [Wall Display Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Wall+Display+Plugin)
+   ([#830](https://github.com/jenkinsci/job-dsl-plugin/pull/830))
+ * Enhanced support for the [Dashboard View Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Dashboard+View)
+   ([#824](https://github.com/jenkinsci/job-dsl-plugin/pull/824))
  * Enhanced support for the [Git Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Git+Plugin)
    ([JENKINS-33967](https://issues.jenkins-ci.org/browse/JENKINS-33967),
    [JENKINS-33968](https://issues.jenkins-ci.org/browse/JENKINS-33968))
+ * Enhanced support for the [Copy Artifact Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Copy+Artifact+Plugin)
+   ([JENKINS-34360](https://issues.jenkins-ci.org/browse/JENKINS-34360))
  * Enhanced documentation for the [Gerrit Trigger Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Gerrit+Trigger)
    ([JENKINS-30323](https://issues.jenkins-ci.org/browse/JENKINS-30323))
+ * Enhanced support for the [JIRA Plugin](https://wiki.jenkins-ci.org/display/JENKINS/JIRA+Plugin)
+   ([#834](https://github.com/jenkinsci/job-dsl-plugin/pull/834))
+ * Removed anything that has been deprecated in 1.40, see [Migration](Migration#migrating-to-140)
+ * Changed the behavior of the `currentJobParameters` method in the `phaseJob` context, see
+   [Migration](Migration#migrating-to-146)
+   ([#836](https://github.com/jenkinsci/job-dsl-plugin/pull/836))
 * 1.45 (April 05 2016)
  * Added support for the [CMake Plugin](https://wiki.jenkins-ci.org/display/JENKINS/CMake+Plugin)
    ([JENKINS-33829](https://issues.jenkins-ci.org/browse/JENKINS-33829))

@@ -121,10 +121,8 @@ class StepContext extends AbstractExtensibleContext {
      *
      * @since 1.27
      */
-    @RequiresPlugin(id = 'gradle')
+    @RequiresPlugin(id = 'gradle', minimumVersion = '1.23')
     void gradle(@DslContext(GradleContext) Closure gradleClosure) {
-        jobManagement.logPluginDeprecationWarning('gradle', '1.23')
-
         GradleContext gradleContext = new GradleContext(jobManagement)
         ContextHelper.executeInContext(gradleClosure, gradleContext)
 
@@ -138,9 +136,7 @@ class StepContext extends AbstractExtensibleContext {
             useWrapper gradleContext.useWrapper
             makeExecutable gradleContext.makeExecutable
             fromRootBuildScriptDir gradleContext.fromRootBuildScriptDir
-            if (jobManagement.isMinimumPluginVersionInstalled('gradle', '1.23')) {
-                useWorkspaceAsHome gradleContext.useWorkspaceAsHome
-            }
+            useWorkspaceAsHome gradleContext.useWorkspaceAsHome
         }
 
         ContextHelper.executeConfigureBlock(gradleNode, gradleContext.configureBlock)
@@ -519,6 +515,9 @@ class StepContext extends AbstractExtensibleContext {
                 optional(true)
             }
             doNotFingerprintArtifacts(!copyArtifactContext.fingerprint)
+            if (copyArtifactContext.parameterFilters) {
+                parameters(copyArtifactContext.parameterFilters.join(', '))
+            }
         }
         copyArtifactNode.append(copyArtifactContext.selectorContext.selector)
         stepNodes << copyArtifactNode
@@ -1132,6 +1131,16 @@ class StepContext extends AbstractExtensibleContext {
             workflowActionName(context.workflowActionName ?: '')
             comment(context.comment ?: '')
         }
+    }
+
+    /**
+     * Extracts JIRA information for the build to environment variables.
+     *
+     * @since 1.46
+    */
+    @RequiresPlugin(id = 'jira', minimumVersion = '2.2')
+    void extractJiraEnvironmentVariables() {
+        stepNodes << new NodeBuilder().'hudson.plugins.jira.JiraEnvironmentVariableBuilder'()
     }
 
     /**

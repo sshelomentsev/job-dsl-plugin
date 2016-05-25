@@ -150,9 +150,6 @@ class StepContextSpec extends Specification {
     }
 
     def 'call gradle methods'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.23') >> true
-
         when:
         context.gradle('build')
 
@@ -163,7 +160,7 @@ class StepContextSpec extends Specification {
         gradleStep.name() == 'hudson.plugins.gradle.Gradle'
         gradleStep.tasks[0].value() == 'build'
         gradleStep.useWrapper[0].value() == true
-        (1.._) * jobManagement.requirePlugin('gradle')
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
 
         when:
         context.gradle('build', '-I init.gradle', false)
@@ -173,7 +170,7 @@ class StepContextSpec extends Specification {
         def gradleStep2 = context.stepNodes[1]
         gradleStep2.switches[0].value() == '-I init.gradle'
         gradleStep2.useWrapper[0].value() == false
-        (1.._) * jobManagement.requirePlugin('gradle')
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
 
         when:
         context.gradle('build', '-I init.gradle', false) {
@@ -184,13 +181,10 @@ class StepContextSpec extends Specification {
         context.stepNodes.size() == 3
         def gradleStep3 = context.stepNodes[2]
         gradleStep3.node1[0].value() == 'value1'
-        (1.._) * jobManagement.requirePlugin('gradle')
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
     }
 
     def 'call gradle methods with defaults'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.23') >> true
-
         when:
         context.gradle()
 
@@ -209,7 +203,7 @@ class StepContextSpec extends Specification {
             makeExecutable[0].value() == false
             useWorkspaceAsHome[0].value() == false
         }
-        (1.._) * jobManagement.requirePlugin('gradle')
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
 
         when:
         context.gradle {
@@ -230,13 +224,10 @@ class StepContextSpec extends Specification {
             makeExecutable[0].value() == false
             useWorkspaceAsHome[0].value() == false
         }
-        (1.._) * jobManagement.requirePlugin('gradle')
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
     }
 
     def 'call gradle methods with context'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.23') >> true
-
         when:
         context.gradle {
             tasks 'clean'
@@ -268,43 +259,7 @@ class StepContextSpec extends Specification {
             makeExecutable[0].value() == true
             useWorkspaceAsHome[0].value() == true
         }
-        1 * jobManagement.requirePlugin('gradle')
         1 * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
-        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.23')
-    }
-
-    def 'call gradle with old plugin version'() {
-        when:
-        context.gradle {
-            tasks 'clean'
-            tasks 'build'
-            switches '--info'
-            switches '--stacktrace'
-            useWrapper false
-            description 'desc'
-            rootBuildScriptDir 'rbsd'
-            buildFile 'bf'
-            gradleName 'gn'
-            fromRootBuildScriptDir true
-            makeExecutable true
-        }
-
-        then:
-        context.stepNodes.size() == 1
-        with(context.stepNodes[0]) {
-            children().size() == 9
-            tasks[0].value() == 'clean build'
-            switches[0].value() == '--info --stacktrace'
-            useWrapper[0].value() == false
-            description[0].value() == 'desc'
-            rootBuildScriptDir[0].value() == 'rbsd'
-            buildFile[0].value() == 'bf'
-            gradleName[0].value() == 'gn'
-            fromRootBuildScriptDir[0].value() == true
-            makeExecutable[0].value() == true
-        }
-        1 * jobManagement.requirePlugin('gradle')
-        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.23')
     }
 
     def 'call grails methods'() {
@@ -1016,6 +971,8 @@ class StepContextSpec extends Specification {
             flatten()
             optional()
             fingerprintArtifacts(false)
+            parameterFilters('ONE=two', 'FOO=bar')
+            parameterFilters('LOREM=ipsum')
             buildSelector {
                 upstreamBuild(true)
             }
@@ -1025,7 +982,7 @@ class StepContextSpec extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('copyartifact', '1.31')
         with(context.stepNodes[0]) {
             name() == 'hudson.plugins.copyartifact.CopyArtifact'
-            children().size() == 8
+            children().size() == 9
             project[0].value() == 'upstream'
             filter[0].value() == '*.xml, *.txt'
             excludes[0].value() == 'foo.xml, foo.txt'
@@ -1033,6 +990,7 @@ class StepContextSpec extends Specification {
             optional[0].value() == true
             target[0].value() == 'target/'
             doNotFingerprintArtifacts[0].value() == true
+            parameters[0].value() == 'ONE=two, FOO=bar, LOREM=ipsum'
             with(selector[0]) {
                 children().size() == 1
                 attribute('class') == 'hudson.plugins.copyartifact.TriggeredBuildSelector'
@@ -3635,6 +3593,18 @@ class StepContextSpec extends Specification {
         'key'  | null   | null   | 'key'       | ''           | ''
         'key1' | 'key2' | null   | 'key1'      | 'key2'       | ''
         'key1' | 'key2' | 'key3' | 'key1'      | 'key2'       | 'key3'
+    }
+
+    def 'call extractJiraEnvironmentVariables method'() {
+        when:
+        context.extractJiraEnvironmentVariables()
+
+        then:
+        context.stepNodes != null
+        context.stepNodes.size() == 1
+        context.stepNodes[0].name() == 'hudson.plugins.jira.JiraEnvironmentVariableBuilder'
+        context.stepNodes[0].children().size() == 0
+        1 * jobManagement.requireMinimumPluginVersion('jira', '2.2')
     }
 
     def 'call cmake methods with no options'() {
