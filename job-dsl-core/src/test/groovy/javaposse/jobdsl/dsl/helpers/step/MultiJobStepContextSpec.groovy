@@ -17,9 +17,10 @@ class MultiJobStepContextSpec extends Specification {
         then:
         with(context.stepNodes[0]) {
             name() == 'com.tikal.jenkins.plugins.multijob.MultiJobBuilder'
-            children().size() == 3
+            children().size() == 11
             phaseName[0].value() == 'First'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == 'PARALLEL'
             phaseJobs[0].value().empty
         }
 
@@ -32,12 +33,13 @@ class MultiJobStepContextSpec extends Specification {
         then:
         with(context.stepNodes[1]) {
             name() == 'com.tikal.jenkins.plugins.multijob.MultiJobBuilder'
-            children().size() == 3
+            children().size() == 11
             phaseName[0].value() == 'Second'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == 'PARALLEL'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
-                children().size() == 7
+                children().size() == 20
                 jobName[0].value() == 'JobA'
                 currParams[0].value() == true
                 exposedSCM[0].value() == true
@@ -60,9 +62,10 @@ class MultiJobStepContextSpec extends Specification {
         then:
         with(context.stepNodes[0]) {
             name() == 'com.tikal.jenkins.plugins.multijob.MultiJobBuilder'
-            children().size() == 3
+            children().size() == 11
             phaseName[0].value() == 'Third'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == 'PARALLEL'
             phaseJobs[0].children().size() == 3
             phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0].jobName[0].value() == 'JobA'
             phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[1].jobName[0].value() == 'JobB'
@@ -100,12 +103,13 @@ class MultiJobStepContextSpec extends Specification {
 
         then:
         with(context.stepNodes[0]) {
-            children().size() == 3
+            children().size() == 11
             phaseName[0].value() == 'Fourth'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == 'PARALLEL'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
-                children().size() == 8
+                children().size() == 21
                 jobName[0].value() == 'JobA'
                 currParams[0].value() == false
                 exposedSCM[0].value() == true
@@ -188,12 +192,13 @@ class MultiJobStepContextSpec extends Specification {
         then:
         with(context.stepNodes[0]) {
             name() == 'com.tikal.jenkins.plugins.multijob.MultiJobBuilder'
-            children().size() == 3
+            children().size() == 11
             phaseName[0].value() == 'Second'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == 'PARALLEL'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
-                children().size() == 7
+                children().size() == 20
                 jobName[0].value() == 'JobA'
                 currParams[0].value() == true
                 exposedSCM[0].value() == true
