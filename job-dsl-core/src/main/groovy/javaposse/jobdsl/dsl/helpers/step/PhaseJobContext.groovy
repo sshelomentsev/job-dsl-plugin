@@ -15,6 +15,8 @@ class PhaseJobContext extends AbstractContext {
 
     private static final List<String> VALID_RESUME_CONDITIONS = ['SKIP', 'ALWAYS', 'EXPRESSION']
 
+    private static final List<String> VALID_IGNORE_JOB_RESULT_TYPE = ['NEVER', 'UNSTABLE', 'ALWAYS']
+
     String jobName
     boolean currentJobParameters = true
     boolean exposedScm = true
@@ -23,6 +25,7 @@ class PhaseJobContext extends AbstractContext {
     boolean abortAllJobs = false
     String killPhaseCondition = 'FAILURE'
     String resumeCondition = 'SKIP'
+    String ignoreJobResult = 'NEVER'
     Boolean enableJobScript = null
     boolean isUseScriptFile = false
     String jobScript
@@ -102,6 +105,15 @@ class PhaseJobContext extends AbstractContext {
         )
 
         this.resumeCondition = resumeCondition
+    }
+
+    void ignoreJobResult(String ignoreJobResult) {
+        Preconditions.checkArgument(
+                VALID_IGNORE_JOB_RESULT_TYPE.contains(ignoreJobResult),
+                "Ignore job result needs to be one of these values: ${VALID_IGNORE_JOB_RESULT_TYPE.join(',')}"
+        )
+
+        this.ignoreJobResult = ignoreJobResult
     }
 
     void resumeGroovyScript(String source, String value) {

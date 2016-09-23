@@ -15,6 +15,10 @@ class MultiJobStepContext extends StepContext {
             'PARALLEL', 'SEQUENTIAL'
     ]
 
+    private static final List<String> VALID_IGNORE_PHASE_RESULT_TYPE = [
+            'NEVER', 'UNSTABLE', 'ALWAYS'
+    ]
+
     MultiJobStepContext(JobManagement jobManagement, Item item) {
         super(jobManagement, item)
     }
@@ -23,21 +27,28 @@ class MultiJobStepContext extends StepContext {
      * Adds a MultiJob phase.
      */
     void phase(@DslContext(PhaseContext) Closure phaseContext) {
-        phase(null, 'SUCCESSFUL', 'PARALLEL', phaseContext)
+        phase(null, 'SUCCESSFUL', 'PARALLEL', 'NEVER', phaseContext)
     }
 
     /**
      * Adds a MultiJob phase.
      */
     void phase(String phaseName, @DslContext(PhaseContext) Closure phaseContext = null) {
-        phase(phaseName, 'SUCCESSFUL', 'PARALLEL', phaseContext)
+        phase(phaseName, 'SUCCESSFUL', 'PARALLEL', 'NEVER', phaseContext)
     }
 
     /**
      * Adds a MultiJob phase.
      */
     void phase(String phaseName, String continuationCondition, @DslContext(PhaseContext) Closure phaseContext = null) {
-        phase(phaseName, continuationCondition, 'PARALLEL', phaseContext)
+        phase(phaseName, continuationCondition, 'PARALLEL', 'NEVER', phaseContext)
+    }
+
+    /**
+     * Adds a MultiJob phase.
+     */
+    void phase(String phaseName, String continuationCondition, String executionType, @DslContext(PhaseContext) Closure phaseContext = null) {
+        phase(phaseName, continuationCondition, executionType, 'NEVER', phaseContext)
     }
 
     /**
@@ -47,11 +58,12 @@ class MultiJobStepContext extends StepContext {
      * {@code 'FAILURE'}. When version 1.16 or later of the MultiJob plugin is installed, {@code continuationCondition}
      * can also be set to {@code 'ALWAYS'}.
      * {@code executionType} must be one of {@code 'PARALLEL'}, {@code 'SEQUENTIAL'}.
+     * {@code ignorePhaseResult} must be one of {@code 'NEVER'}, {@code 'UNSTABLE'}, {@code 'ALWAYS'}.
      */
-    void phase(String name, String continuationCondition, String executionType,
+    void phase(String name, String continuationCondition, String executionType, String ignorePhaseResult,
                @DslContext(PhaseContext) Closure phaseClosure) {
         PhaseContext phaseContext = new PhaseContext(jobManagement, item, name, continuationCondition, executionType,
-                null, '', null, '', '', false, false)
+                null, '', null, '', '', false, false, ignorePhaseResult)
         ContextHelper.executeInContext(phaseClosure, phaseContext)
 
         Preconditions.checkNotNullOrEmpty(phaseContext.phaseName, 'A phase needs a name')
@@ -62,6 +74,11 @@ class MultiJobStepContext extends StepContext {
         Preconditions.checkArgument(
                 VALID_EXECUTION_TYPES.contains(phaseContext.executionType),
                 "Execution type needs to be one of these values: ${VALID_EXECUTION_TYPES.join(', ')}"
+        )
+
+        Preconditions.checkArgument(
+                VALID_IGNORE_PHASE_RESULT_TYPE.contains(phaseContext.ignorePhaseResult),
+                "Ignore phase result needs to be one of these values: ${VALID_IGNORE_PHASE_RESULT_TYPE.join(', ')}"
         )
         stepNodes << new NodeBuilder().'com.tikal.jenkins.plugins.multijob.MultiJobBuilder' {
             phaseName phaseContext.phaseName
@@ -74,6 +91,7 @@ class MultiJobStepContext extends StepContext {
             delegate.bindings(phaseContext.bindings)
             delegate.isScriptOnSlave(phaseContext.isScriptOnSlave)
             delegate.isRunOnSlave(phaseContext.isRunOnSlave)
+            delegate.ignorePhaseResult(phaseContext.ignorePhaseResult)
             phaseJobs {
                 phaseContext.jobsInPhase.each { PhaseJobContext jobInPhase ->
                     Node phaseJobNode = 'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig' {
@@ -96,6 +114,7 @@ class MultiJobStepContext extends StepContext {
                         resumeConditions jobInPhase.resumeConditions
                         isRunJobScriptOnSlave jobInPhase.isRunJobScriptOnSlave
                         isRunResumeScriptOnSlave jobInPhase.isRunResumeScriptOnSlave
+                        ignoreJobResult jobInPhase.ignoreJobResult
                         configs(jobInPhase.paramTrigger.configs ?: [class: 'java.util.Collections$EmptyList'])
                     }
 
