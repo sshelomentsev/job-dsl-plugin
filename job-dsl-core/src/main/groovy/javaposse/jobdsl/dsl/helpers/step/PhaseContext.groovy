@@ -20,12 +20,13 @@ class PhaseContext extends AbstractContext {
     String scriptPath
     String bindings
     Boolean isRunOnSlave
+    String ignorePhaseResult
 
     List<PhaseJobContext> jobsInPhase = []
 
     PhaseContext(JobManagement jobManagement, Item item, String phaseName, String continuationCondition,
                  String executionType, Boolean enableGroovyScript, String scriptText, Boolean isUseScriptFile,
-                 String scriptPath, String bindings, Boolean isScriptOnSlave, Boolean isRunOnSlave) {
+                 String scriptPath, String bindings, Boolean isScriptOnSlave, Boolean isRunOnSlave, String ignorePhaseResult) {
         super(jobManagement)
         this.item = item
         this.phaseName = phaseName
@@ -38,6 +39,7 @@ class PhaseContext extends AbstractContext {
         this.bindings = bindings
         this.isScriptOnSlave = isScriptOnSlave
         this.isRunOnSlave = isRunOnSlave
+        this.ignorePhaseResult = ignorePhaseResult
     }
 
     /**
@@ -59,6 +61,14 @@ class PhaseContext extends AbstractContext {
      */
     void executionType(String executionType) {
         this.executionType = executionType
+    }
+
+    /**
+     * Define how to decide the status of the whole MultiJob Project, based on the status of current phase.
+     * @param ignorePhaseResult
+     */
+    void ignorePhaseResult(String ignorePhaseResult) {
+        this.ignorePhaseResult = ignorePhaseResult
     }
 
     void enableGroovyScript(boolean enableGroovyScript) {

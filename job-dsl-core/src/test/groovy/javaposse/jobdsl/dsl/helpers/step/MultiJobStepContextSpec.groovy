@@ -20,6 +20,7 @@ class MultiJobStepContextSpec extends Specification {
             children().size() == 11
             phaseName[0].value() == 'First'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            ignorePhaseResult[0].value() == 'NEVER'
             executionType[0].value() == 'PARALLEL'
             phaseJobs[0].value().empty
         }
@@ -36,6 +37,7 @@ class MultiJobStepContextSpec extends Specification {
             children().size() == 11
             phaseName[0].value() == 'Second'
             continuationCondition[0].value() == 'SUCCESSFUL'
+            ignorePhaseResult[0].value() == 'NEVER'
             executionType[0].value() == 'PARALLEL'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
@@ -47,6 +49,7 @@ class MultiJobStepContextSpec extends Specification {
                 disableJob[0].value() == false
                 abortAllJob[0].value() == false
                 killPhaseOnJobResultCondition[0].value() == 'FAILURE'
+                ignoreJobResult[0].value() == 'NEVER'
             }
         }
     }
@@ -66,6 +69,7 @@ class MultiJobStepContextSpec extends Specification {
             phaseName[0].value() == 'Third'
             continuationCondition[0].value() == 'SUCCESSFUL'
             executionType[0].value() == 'PARALLEL'
+            ignorePhaseResult[0].value() == 'NEVER'
             phaseJobs[0].children().size() == 3
             phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0].jobName[0].value() == 'JobA'
             phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[1].jobName[0].value() == 'JobB'
@@ -107,6 +111,7 @@ class MultiJobStepContextSpec extends Specification {
             phaseName[0].value() == 'Fourth'
             continuationCondition[0].value() == 'SUCCESSFUL'
             executionType[0].value() == 'PARALLEL'
+            ignorePhaseResult[0].value() == 'NEVER'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
                 children().size() == 21
@@ -116,6 +121,7 @@ class MultiJobStepContextSpec extends Specification {
                 disableJob[0].value() == false
                 abortAllJob[0].value() == false
                 killPhaseOnJobResultCondition[0].value() == 'FAILURE'
+                ignoreJobResult[0].value() == 'NEVER'
                 customConfig[0].value() == 'foobar'
                 configs[0].children().size() == 8
                 with(configs[0].'hudson.plugins.parameterizedtrigger.BooleanParameters'[0]) {
@@ -186,6 +192,7 @@ class MultiJobStepContextSpec extends Specification {
                 disableJob()
                 abortAllJobs()
                 killPhaseCondition('UNSTABLE')
+                ignoreJobResult('NEVER')
             }
         }
 
@@ -196,6 +203,7 @@ class MultiJobStepContextSpec extends Specification {
             phaseName[0].value() == 'Second'
             continuationCondition[0].value() == 'SUCCESSFUL'
             executionType[0].value() == 'PARALLEL'
+            ignorePhaseResult[0].value() == 'NEVER'
             phaseJobs[0].children().size() == 1
             with(phaseJobs[0].'com.tikal.jenkins.plugins.multijob.PhaseJobsConfig'[0]) {
                 children().size() == 20
@@ -206,6 +214,7 @@ class MultiJobStepContextSpec extends Specification {
                 disableJob[0].value() == true
                 abortAllJob[0].value() == true
                 killPhaseOnJobResultCondition[0].value() == 'UNSTABLE'
+                ignoreJobResult[0].value() == 'NEVER'
             }
         }
     }
@@ -248,6 +257,7 @@ class MultiJobStepContextSpec extends Specification {
             continuationCondition[0].value() == condition
             executionType[0].value() == 'PARALLEL'
             phaseJobs[0].value().empty
+            ignorePhaseResult[0].value() == 'NEVER'
         }
 
         where:
@@ -284,6 +294,7 @@ class MultiJobStepContextSpec extends Specification {
                         children().size() == 20
                         jobName[0].value() == 'JobA'
                         abortAllJob[0].value() == false
+                        ignoreJobResult[0].value() == 'NEVER'
                     }
                 }
             }
