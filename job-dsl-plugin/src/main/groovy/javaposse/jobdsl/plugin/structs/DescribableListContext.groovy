@@ -1,8 +1,11 @@
 package javaposse.jobdsl.plugin.structs
 
+import hudson.model.Descriptor
 import javaposse.jobdsl.dsl.Context
 import javaposse.jobdsl.dsl.DslException
+import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.plugin.Messages
+import jenkins.model.Jenkins
 import org.jenkinsci.plugins.structs.describable.DescribableModel
 
 import static java.lang.String.format
@@ -17,10 +20,22 @@ import static DescribableHelper.isOptionalClosureArgument
  */
 class DescribableListContext implements Context {
     private final Collection<DescribableModel> describableModels
+    private final JobManagement jobManagement
     final List values = []
 
-    DescribableListContext(Collection<DescribableModel> types) {
+    /**
+     * @since 1.58
+     */
+    DescribableListContext(String type, JobManagement jobManagement) {
+        this(
+                Jenkins.instance.getExtensionList(type).collect { Descriptor d -> new DescribableModel(d.clazz) },
+                jobManagement
+        )
+    }
+
+    DescribableListContext(Collection<DescribableModel> types, JobManagement jobManagement) {
         this.describableModels = types
+        this.jobManagement = jobManagement
     }
 
     Object methodMissing(String name, args) {
@@ -35,7 +50,11 @@ class DescribableListContext implements Context {
                         Arrays.toString(candidates*.type*.name)
                 ))
             } else if (candidates.size() == 1) {
-                DescribableContext delegate = new DescribableContext(candidates.first())
+                DescribableModel candidate = candidates.first()
+                if (candidate.deprecated) {
+                    jobManagement.logDeprecationWarning(name)
+                }
+                DescribableContext delegate = new DescribableContext(candidate, jobManagement)
                 if (args.size() == 1) {
                     executeInContext((Closure) argsArray[0], delegate)
                 }

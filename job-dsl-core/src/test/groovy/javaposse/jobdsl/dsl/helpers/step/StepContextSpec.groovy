@@ -8,8 +8,6 @@ import javaposse.jobdsl.dsl.helpers.LocalRepositoryLocation
 import spock.lang.Specification
 import spock.lang.Unroll
 
-import static javaposse.jobdsl.dsl.helpers.step.condition.FileExistsCondition.BaseDir.WORKSPACE
-
 class StepContextSpec extends Specification {
     JobManagement jobManagement = Mock(JobManagement)
     Item item = Mock(Item)
@@ -161,6 +159,7 @@ class StepContextSpec extends Specification {
         gradleStep.tasks[0].value() == 'build'
         gradleStep.useWrapper[0].value() == true
         (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
 
         when:
         context.gradle('build', '-I init.gradle', false)
@@ -171,6 +170,7 @@ class StepContextSpec extends Specification {
         gradleStep2.switches[0].value() == '-I init.gradle'
         gradleStep2.useWrapper[0].value() == false
         (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
 
         when:
         context.gradle('build', '-I init.gradle', false) {
@@ -182,6 +182,7 @@ class StepContextSpec extends Specification {
         def gradleStep3 = context.stepNodes[2]
         gradleStep3.node1[0].value() == 'value1'
         (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
     }
 
     def 'call gradle methods with defaults'() {
@@ -204,6 +205,7 @@ class StepContextSpec extends Specification {
             useWorkspaceAsHome[0].value() == false
         }
         (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
 
         when:
         context.gradle {
@@ -225,9 +227,37 @@ class StepContextSpec extends Specification {
             useWorkspaceAsHome[0].value() == false
         }
         (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
     }
 
-    def 'call gradle methods with context'() {
+    def 'call gradle methods with defaults and plugin version 1.26'() {
+        setup:
+        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.26') >> true
+        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.25') >> true
+
+        when:
+        context.gradle()
+
+        then:
+        context.stepNodes.size() == 1
+        with(context.stepNodes[0]) {
+            children().size() == 10
+            tasks[0].value() == ''
+            switches[0].value() == ''
+            useWrapper[0].value() == true
+            rootBuildScriptDir[0].value() == ''
+            buildFile[0].value() == ''
+            gradleName[0].value() == '(Default)'
+            fromRootBuildScriptDir[0].value() == true
+            makeExecutable[0].value() == false
+            useWorkspaceAsHome[0].value() == false
+            passAsProperties[0].value() == false
+        }
+        (1.._) * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
+    }
+
+    def 'call gradle methods with context and old plugin version'() {
         when:
         context.gradle {
             tasks 'clean'
@@ -259,7 +289,52 @@ class StepContextSpec extends Specification {
             makeExecutable[0].value() == true
             useWorkspaceAsHome[0].value() == true
         }
+        1 * jobManagement.logDeprecationWarning()
         1 * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
+    }
+
+    def 'call gradle methods with context'() {
+        setup:
+        jobManagement.isMinimumPluginVersionInstalled('gradle', '1.25') >> true
+
+        when:
+        context.gradle {
+            tasks 'clean'
+            tasks 'build'
+            switches '--info'
+            switches '--stacktrace'
+            useWrapper false
+            description 'desc'
+            rootBuildScriptDir 'rbsd'
+            buildFile 'bf'
+            gradleName 'gn'
+            fromRootBuildScriptDir true
+            makeExecutable true
+            useWorkspaceAsHome true
+            passAsProperties true
+        }
+
+        then:
+        context.stepNodes.size() == 1
+        with(context.stepNodes[0]) {
+            children().size() == 11
+            tasks[0].value() == 'clean build'
+            switches[0].value() == '--info --stacktrace'
+            useWrapper[0].value() == false
+            description[0].value() == 'desc'
+            rootBuildScriptDir[0].value() == 'rbsd'
+            buildFile[0].value() == 'bf'
+            gradleName[0].value() == 'gn'
+            fromRootBuildScriptDir[0].value() == true
+            makeExecutable[0].value() == true
+            useWorkspaceAsHome[0].value() == true
+            passAsProperties[0].value() == true
+        }
+        1 * jobManagement.logDeprecationWarning()
+        1 * jobManagement.requireMinimumPluginVersion('gradle', '1.23')
+        1 * jobManagement.requireMinimumPluginVersion('gradle', '1.25')
+        1 * jobManagement.logPluginDeprecationWarning('gradle', '1.26')
     }
 
     def 'call grails methods'() {
@@ -281,6 +356,7 @@ class StepContextSpec extends Specification {
         grailsStep0.forceUpgrade[0].value() == false
         grailsStep0.nonInteractive[0].value() == true
         (1.._) * jobManagement.requirePlugin('grails')
+        1 * jobManagement.logDeprecationWarning()
 
         when:
         context.grails('compile', true)
@@ -299,6 +375,7 @@ class StepContextSpec extends Specification {
         grailsStep1.forceUpgrade[0].value() == false
         grailsStep1.nonInteractive[0].value() == true
         (1.._) * jobManagement.requirePlugin('grails')
+        1 * jobManagement.logDeprecationWarning()
 
         when:
         context.grails('compile', false) {
@@ -320,6 +397,7 @@ class StepContextSpec extends Specification {
         grailsStep2.forceUpgrade[0].value() == false
         grailsStep2.nonInteractive[0].value() == false
         (1.._) * jobManagement.requirePlugin('grails')
+        1 * jobManagement.logDeprecationWarning()
 
         when:
         context.grails {
@@ -350,6 +428,7 @@ class StepContextSpec extends Specification {
         grailsStep3.forceUpgrade[0].value() == true
         grailsStep3.nonInteractive[0].value() == false
         (1.._) * jobManagement.requirePlugin('grails')
+        (1.._) * jobManagement.logDeprecationWarning()
 
         when:
         context.grails '"test-app --stacktrace"', {
@@ -376,6 +455,7 @@ class StepContextSpec extends Specification {
         grailsStep4.forceUpgrade[0].value() == true
         grailsStep4.nonInteractive[0].value() == false
         (1.._) * jobManagement.requirePlugin('grails')
+        (1.._) * jobManagement.logDeprecationWarning()
 
         when:
         context.grails {
@@ -395,6 +475,7 @@ class StepContextSpec extends Specification {
         grailsStep5.forceUpgrade[0].value() == false
         grailsStep5.nonInteractive[0].value() == true
         (1.._) * jobManagement.requirePlugin('grails')
+        (1.._) * jobManagement.logDeprecationWarning()
     }
 
     def 'call maven methods'() {
@@ -408,7 +489,6 @@ class StepContextSpec extends Specification {
         mavenStep.name() == 'hudson.tasks.Maven'
         mavenStep.targets[0].value() == 'install'
         mavenStep.pom[0] == null
-        (1.._) * jobManagement.requireMinimumPluginVersion('maven-plugin', '2.3')
 
         when:
         context.maven('install', 'pom.xml') { mavenNode ->
@@ -421,7 +501,6 @@ class StepContextSpec extends Specification {
         def mavenStep2 = context.stepNodes[1]
         mavenStep2.pom[0].value() == 'pom.xml'
         mavenStep2.mavenName[0].value() == 'Maven 2.0.1'
-        (1.._) * jobManagement.requireMinimumPluginVersion('maven-plugin', '2.3')
     }
 
     def 'call maven method with full context'() {
@@ -454,7 +533,44 @@ class StepContextSpec extends Specification {
         mavenStep.mavenName[0].value() == 'Maven 3.0.5'
         mavenStep.settingsConfigId[0].value() == 'foo-bar'
         mavenStep.properties[0].value() == 'skipTests=true\nother=some\nevenAnother=One'
-        1 * jobManagement.requireMinimumPluginVersion('maven-plugin', '2.3')
+    }
+
+    def 'call maven method with full context and core version >= 2.12'() {
+        setup:
+        jobManagement.isMinimumCoreVersion('2.12') >> true
+
+        when:
+        context.maven {
+            rootPOM('module-a/pom.xml')
+            goals('clean')
+            goals('install')
+            mavenOpts('-Xms256m')
+            mavenOpts('-Xmx512m')
+            localRepository(LocalRepositoryLocation.LOCAL_TO_WORKSPACE)
+            mavenInstallation('Maven 3.0.5')
+            properties(skipTests: true, other: 'some')
+            property('evenAnother', 'One')
+            injectBuildVariables(false)
+            configure {
+                it / settingsConfigId('foo-bar')
+            }
+        }
+
+        then:
+        context.stepNodes != null
+        context.stepNodes.size() == 1
+        def mavenStep = context.stepNodes[0]
+        mavenStep.name() == 'hudson.tasks.Maven'
+        mavenStep.children().size() == 8
+        mavenStep.targets[0].value() == 'clean install'
+        mavenStep.pom[0].value() == 'module-a/pom.xml'
+        mavenStep.jvmOptions[0].value() == '-Xms256m -Xmx512m'
+        mavenStep.usePrivateRepository[0].value() == true
+        mavenStep.mavenName[0].value() == 'Maven 3.0.5'
+        mavenStep.settingsConfigId[0].value() == 'foo-bar'
+        mavenStep.properties[0].value() == 'skipTests=true\nother=some\nevenAnother=One'
+        mavenStep.injectBuildVariables[0].value() == false
+        1 * jobManagement.requireMinimumCoreVersion('2.12')
     }
 
     def 'call maven method with minimal context'() {
@@ -472,38 +588,80 @@ class StepContextSpec extends Specification {
         mavenStep.jvmOptions[0].value() == ''
         mavenStep.usePrivateRepository[0].value() == false
         mavenStep.mavenName[0].value() == '(Default)'
-        1 * jobManagement.requireMinimumPluginVersion('maven-plugin', '2.3')
     }
 
-    def 'call maven method with unknown provided settings'() {
+    def 'call maven method with minimal context and core version >= 2.12'() {
         setup:
-        String settingsName = 'lalala'
+        jobManagement.isMinimumCoreVersion('2.12') >> true
 
         when:
         context.maven {
-            providedSettings(settingsName)
         }
 
         then:
-        Exception e = thrown(DslScriptException)
-        e.message.contains(settingsName)
+        context.stepNodes != null
+        context.stepNodes.size() == 1
+        def mavenStep = context.stepNodes[0]
+        mavenStep.name() == 'hudson.tasks.Maven'
+        mavenStep.children().size() == 5
+        mavenStep.targets[0].value() == ''
+        mavenStep.jvmOptions[0].value() == ''
+        mavenStep.usePrivateRepository[0].value() == false
+        mavenStep.mavenName[0].value() == '(Default)'
+        mavenStep.injectBuildVariables[0].value() == true
     }
 
-    def 'call maven method with unknown provided global settings'() {
+    def 'call maven method with provided settings ID'() {
         setup:
-        String settingsName = 'lalala'
+        String settingsId = 'lalala'
 
         when:
         context.maven {
-            providedGlobalSettings(settingsName)
+            providedSettings(settingsId)
         }
 
         then:
-        Exception e = thrown(DslScriptException)
-        e.message.contains(settingsName)
+        with(context.stepNodes[0]) {
+            name() == 'hudson.tasks.Maven'
+            children().size() == 5
+            targets[0].value() == ''
+            jvmOptions[0].value() == ''
+            usePrivateRepository[0].value() == false
+            mavenName[0].value() == '(Default)'
+            with(settings[0]) {
+                attribute('class') == 'org.jenkinsci.plugins.configfiles.maven.job.MvnSettingsProvider'
+                children().size() == 1
+                settingsConfigId[0].value() == settingsId
+            }
+        }
     }
 
-    def 'call maven method with provided settings'() {
+    def 'call maven method with provided global settings ID'() {
+        setup:
+        String settingsId = 'lalala'
+
+        when:
+        context.maven {
+            providedGlobalSettings(settingsId)
+        }
+
+        then:
+        with(context.stepNodes[0]) {
+            name() == 'hudson.tasks.Maven'
+            children().size() == 5
+            targets[0].value() == ''
+            jvmOptions[0].value() == ''
+            usePrivateRepository[0].value() == false
+            mavenName[0].value() == '(Default)'
+            with(globalSettings[0]) {
+                attribute('class') == 'org.jenkinsci.plugins.configfiles.maven.job.MvnGlobalSettingsProvider'
+                children().size() == 1
+                settingsConfigId[0].value() == settingsId
+            }
+        }
+    }
+
+    def 'call maven method with provided settings names'() {
         setup:
         String settingsName = 'maven-proxy'
         String settingsId = '123123415'
@@ -539,7 +697,6 @@ class StepContextSpec extends Specification {
                 settingsConfigId[0].value() == globalSettingsId
             }
         }
-        1 * jobManagement.requireMinimumPluginVersion('maven-plugin', '2.3')
     }
 
     def 'call ant methods'() {
@@ -1769,7 +1926,7 @@ class StepContextSpec extends Specification {
         }
         1 * jobManagement.requireMinimumPluginVersion('parameterized-trigger', '2.26')
         1 * jobManagement.requirePlugin('nodelabelparameter')
-        1 * jobManagement.requireMinimumPluginVersion('git', '2.2.6')
+        1 * jobManagement.requireMinimumPluginVersion('git', '2.5.3')
     }
 
     def 'call downstream build step with no args'() {
@@ -2237,7 +2394,7 @@ class StepContextSpec extends Specification {
         when:
         context.conditionalSteps {
             condition {
-                fileExists('someFile', WORKSPACE)
+                fileExists('someFile', RunConditionContext.BaseDir.WORKSPACE)
             }
             steps {
                 shell('echo Test')
@@ -2309,7 +2466,7 @@ class StepContextSpec extends Specification {
         context.conditionalSteps {
             condition {
                 "${dslOperation}" {
-                    fileExists('someFile', WORKSPACE)
+                    fileExists('someFile', RunConditionContext.BaseDir.WORKSPACE)
                 } {
                     alwaysRun()
                 }
@@ -2345,7 +2502,6 @@ class StepContextSpec extends Specification {
     }
 
     @Unroll
-    @SuppressWarnings('LineLength')
     def 'Simple Condition #conditionDsl is added correctly'(conditionDsl, args, conditionClass, argNodes) {
         when:
         context.conditionalSteps {
@@ -2362,31 +2518,31 @@ class StepContextSpec extends Specification {
         Node conditionNode = step.runCondition[0]
         conditionNode.children().size() == argNodes.size()
 
-        conditionNode.attribute('class') == conditionClass
+        conditionNode.attribute('class') == "org.jenkins_ci.plugins.run_condition.${conditionClass}"
         def ignored = argNodes.each { name, value ->
             assert conditionNode[name][0].value() == value
         }
         1 * jobManagement.requirePlugin('conditional-buildstep')
 
         where:
-        conditionDsl       | args                     | conditionClass                                                        | argNodes
-        'shell'            | ['echo test']            | 'org.jenkins_ci.plugins.run_condition.contributed.ShellCondition'     | [command: 'echo test']
-        'batch'            | ['xcopy * ..\\']         | 'org.jenkins_ci.plugins.run_condition.contributed.BatchFileCondition' | [command: 'xcopy * ..\\']
-        'alwaysRun'        | []                       | 'org.jenkins_ci.plugins.run_condition.core.AlwaysRun'                 | [:]
-        'neverRun'         | []                       | 'org.jenkins_ci.plugins.run_condition.core.NeverRun'                  | [:]
-        'booleanCondition' | ['someToken']            | 'org.jenkins_ci.plugins.run_condition.core.BooleanCondition'          | [token: 'someToken']
-        'cause'            | ['userCause', true]      | 'org.jenkins_ci.plugins.run_condition.core.CauseCondition'            | [buildCause    : 'userCause',
-                                                                                                                                 exclusiveCause: true]
-        'stringsMatch'     | ['some1', 'some2', true] | 'org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition'     | [arg1      : 'some1',
-                                                                                                                                 arg2      : 'some2',
-                                                                                                                                 ignoreCase: true]
-        'expression'       | ['exp', 'lab']           | 'org.jenkins_ci.plugins.run_condition.core.ExpressionCondition'       | [expression: 'exp',
-                                                                                                                                 label     : 'lab']
-        'time'             | [5, 30, 15, 25, true]    | 'org.jenkins_ci.plugins.run_condition.core.TimeCondition'             | [earliestHours  : 5,
-                                                                                                                                 earliestMinutes: 30,
-                                                                                                                                 latestHours    : 15,
-                                                                                                                                 latestMinutes  : 25,
-                                                                                                                                 useBuildTime   : true]
+        conditionDsl       | args                     | conditionClass                   | argNodes
+        'shell'            | ['echo test']            | 'contributed.ShellCondition'     | [command: 'echo test']
+        'batch'            | ['xcopy * ..\\']         | 'contributed.BatchFileCondition' | [command: 'xcopy * ..\\']
+        'alwaysRun'        | []                       | 'core.AlwaysRun'                 | [:]
+        'neverRun'         | []                       | 'core.NeverRun'                  | [:]
+        'booleanCondition' | ['someToken']            | 'core.BooleanCondition'          | [token: 'someToken']
+        'cause'            | ['userCause', true]      | 'core.CauseCondition'            | [buildCause    : 'userCause',
+                                                                                            exclusiveCause: true]
+        'stringsMatch'     | ['some1', 'some2', true] | 'core.StringsMatchCondition'     | [arg1      : 'some1',
+                                                                                            arg2      : 'some2',
+                                                                                            ignoreCase: true]
+        'expression'       | ['exp', 'lab']           | 'core.ExpressionCondition'       | [expression: 'exp',
+                                                                                            label     : 'lab']
+        'time'             | [5, 30, 15, 25, true]    | 'core.TimeCondition'             | [earliestHours  : 5,
+                                                                                            earliestMinutes: 30,
+                                                                                            latestHours    : 15,
+                                                                                            latestMinutes  : 25,
+                                                                                            useBuildTime   : true]
     }
 
     @Unroll
@@ -2476,13 +2632,15 @@ class StepContextSpec extends Specification {
             queryString[0].value() == []
         }
         1 * jobManagement.requirePlugin('Parameterized-Remote-Trigger')
+        1 * jobManagement.logPluginDeprecationWarning('Parameterized-Remote-Trigger', '2.0')
     }
 
-    def 'call remoteTrigger with parameters'() {
+    def 'call remoteTrigger with parameters and credentials'() {
         when:
         context.remoteTrigger('dev-ci', 'test') {
             parameter 'foo', '1'
             parameters bar: '2', baz: '3'
+            overrideCredentials('test')
         }
 
         then:
@@ -2502,10 +2660,12 @@ class StepContextSpec extends Specification {
             parameterList[0].string[0].value() == 'foo=1'
             parameterList[0].string[1].value() == 'bar=2'
             parameterList[0].string[2].value() == 'baz=3'
-            overrideAuth[0].value() == false
+            overrideAuth[0].value() == true
             auth[0].children().size() == 1
             with(auth[0].'org.jenkinsci.plugins.ParameterizedRemoteTrigger.Auth'[0]) {
-                children().size() == 3
+                children().size() == 5
+                authType[0].value() == 'credentialsPlugin'
+                creds[0].value() == 'test'
                 NONE[0].value() == 'none'
                 API__TOKEN[0].value() == 'apiToken'
                 CREDENTIALS__PLUGIN[0].value() == 'credentialsPlugin'
@@ -2515,6 +2675,8 @@ class StepContextSpec extends Specification {
             queryString[0].value() == []
         }
         1 * jobManagement.requirePlugin('Parameterized-Remote-Trigger')
+        1 * jobManagement.requireMinimumPluginVersion('Parameterized-Remote-Trigger', '2.0')
+        1 * jobManagement.logPluginDeprecationWarning('Parameterized-Remote-Trigger', '2.0')
     }
 
     def 'call remoteTrigger with parameters and config'() {
@@ -2559,6 +2721,7 @@ class StepContextSpec extends Specification {
             queryString[0].value() == []
         }
         1 * jobManagement.requirePlugin('Parameterized-Remote-Trigger')
+        1 * jobManagement.logPluginDeprecationWarning('Parameterized-Remote-Trigger', '2.0')
     }
 
     def 'call remoteTrigger without jenkins'() {
@@ -2600,7 +2763,7 @@ class StepContextSpec extends Specification {
         context.stepNodes[0].name() == 'org.jvnet.hudson.plugins.exclusion.CriticalBlockStart'
         context.stepNodes[1].name() == 'hudson.tasks.Shell'
         context.stepNodes[2].name() == 'org.jvnet.hudson.plugins.exclusion.CriticalBlockEnd'
-        1 * jobManagement.requirePlugin('Exclusion')
+        1 * jobManagement.requireMinimumPluginVersion('Exclusion', '0.12')
     }
 
     def 'call rake method'() {
@@ -2935,20 +3098,23 @@ class StepContextSpec extends Specification {
             authentication('bob')
             returnCodeBuildRelevant()
             logResponseBody()
+            passBuildParameters()
         }
 
         then:
         context.stepNodes.size() == 1
         with(context.stepNodes[0]) {
             name() == 'jenkins.plugins.http__request.HttpRequest'
-            children().size() == 5
+            children().size() == 6
             url[0].value() == 'http://www.example.com'
             httpMode[0].value() == 'GET'
             authentication[0].value() == 'bob'
             returnCodeBuildRelevant[0].value() == true
             logResponseBody[0].value() == true
+            passBuildParameters[0].value() == true
         }
         1 * jobManagement.requirePlugin('http_request')
+        1 * jobManagement.requireMinimumPluginVersion('http_request', '1.8.7')
     }
 
     def 'call http request with invalid HTTP mode'() {
@@ -3208,80 +3374,6 @@ class StepContextSpec extends Specification {
         context.stepNodes.size() == 1
         with(context.stepNodes[0]) {
             name() == 'com.cloudbees.dockerpublish.DockerBuilder'
-            children().size() == 12
-            server[0].value().empty
-            registry[0].value().empty
-            repoName[0].value().empty
-            noCache[0].value() == false
-            forcePull[0].value() == true
-            dockerfilePath[0].value().empty
-            skipBuild[0].value() == false
-            skipDecorate[0].value() == false
-            repoTag[0].value().empty
-            skipPush[0].value() == false
-            createFingerprint[0].value() == true
-            skipTagLatest[0].value() == false
-        }
-        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
-        1 * jobManagement.logPluginDeprecationWarning('docker-build-publish', '1.2')
-    }
-
-    def 'call dockerBuildAndPublish with all options'() {
-        when:
-        context.dockerBuildAndPublish {
-            repositoryName('test1')
-            tag('test2')
-            dockerHostURI('test3')
-            serverCredentials('test4')
-            dockerRegistryURL('test5')
-            registryCredentials('test6')
-            skipPush()
-            noCache()
-            forcePull(false)
-            skipBuild()
-            createFingerprints(false)
-            skipDecorate()
-            skipTagAsLatest()
-            dockerfileDirectory('test7')
-        }
-
-        then:
-        context.stepNodes.size() == 1
-        with(context.stepNodes[0]) {
-            name() == 'com.cloudbees.dockerpublish.DockerBuilder'
-            children().size() == 12
-            server[0].children().size() == 2
-            server[0].uri[0].value() == 'test3'
-            server[0].credentialsId[0].value() == 'test4'
-            registry[0].children().size() == 2
-            registry[0].url[0].value() == 'test5'
-            registry[0].credentialsId[0].value() == 'test6'
-            repoName[0].value() == 'test1'
-            noCache[0].value() == true
-            forcePull[0].value() == false
-            dockerfilePath[0].value() == 'test7'
-            skipBuild[0].value() == true
-            skipDecorate[0].value() == true
-            repoTag[0].value() == 'test2'
-            skipPush[0].value() == true
-            createFingerprint[0].value() == false
-            skipTagLatest[0].value() == true
-        }
-        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
-        1 * jobManagement.logPluginDeprecationWarning('docker-build-publish', '1.2')
-    }
-
-    def 'call dockerBuildAndPublish with no options and version 1.2'() {
-        jobManagement.isMinimumPluginVersionInstalled('docker-build-publish', '1.2') >> true
-
-        when:
-        context.dockerBuildAndPublish {
-        }
-
-        then:
-        context.stepNodes.size() == 1
-        with(context.stepNodes[0]) {
-            name() == 'com.cloudbees.dockerpublish.DockerBuilder'
             children().size() == 15
             server[0].value().empty
             registry[0].value().empty
@@ -3299,14 +3391,10 @@ class StepContextSpec extends Specification {
             buildAdditionalArgs[0].value().empty
             forceTag[0].value() == true
         }
-        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
-        1 * jobManagement.logPluginDeprecationWarning('docker-build-publish', '1.2')
+        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.2')
     }
 
-    def 'call dockerBuildAndPublish with all options and version 1.2'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('docker-build-publish', '1.2') >> true
-
+    def 'call dockerBuildAndPublish with all options'() {
         when:
         context.dockerBuildAndPublish {
             repositoryName('test1')
@@ -3353,9 +3441,7 @@ class StepContextSpec extends Specification {
             buildAdditionalArgs[0].value() == 'test9'
             forceTag[0].value() == false
         }
-        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.0')
-        3 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.2')
-        1 * jobManagement.logPluginDeprecationWarning('docker-build-publish', '1.2')
+        1 * jobManagement.requireMinimumPluginVersion('docker-build-publish', '1.2')
     }
 
     def 'call artifactDeployer with no options'() {
@@ -3382,6 +3468,7 @@ class StepContextSpec extends Specification {
             }
         }
         1 * jobManagement.requireMinimumPluginVersion('artifactdeployer', '0.33')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'call artifactDeployer with all options'() {
@@ -3418,6 +3505,7 @@ class StepContextSpec extends Specification {
             }
         }
         1 * jobManagement.requireMinimumPluginVersion('artifactdeployer', '0.33')
+        1 * jobManagement.logDeprecationWarning()
     }
 
     def 'call managedScript with minimal options'() {

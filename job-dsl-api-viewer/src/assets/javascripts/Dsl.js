@@ -12,6 +12,16 @@ _.extend(App.Dsl.prototype, {
         context.simpleClassName = tokens[tokens.length - 1];
 
         context.methods.forEach(function(method) {
+            method.signatures = _.reject(method.signatures, function(signature){ return !window.App.config.embedded && signature.embeddedOnly; });
+            method.signatures.forEach(function (signature) {
+                // maintain compatibility with older data
+                if (signature.plugin) {
+                    signature.plugins = [signature.plugin];
+                } else {
+                    signature.plugins = signature.plugins || [];
+                }
+            });
+
             if (method.signatures.every(function(sig) { return sig.deprecated; })) {
                 method.deprecated = true;
             }
@@ -25,15 +35,22 @@ _.extend(App.Dsl.prototype, {
                 method.contextClass = signatureWithContext.contextClass;
             }
 
-            var signatureWithPlugin = _.find(method.signatures, function(signature) { return signature.plugin; });
-            if (signatureWithPlugin) {
-                method.plugin = window.updateCenter.data.plugins[signatureWithPlugin.plugin.id];
-            }
+            method.plugins = _.chain(method.signatures)
+                .pluck('plugins')
+                .flatten()
+                .map(function(plugin) {
+                    var data = window.updateCenter.data.plugins[plugin.id];
+                    if (!data) {
+                        data = {
+                            name: plugin.id,
+                            title: plugin.id
+                        };
+                    }
+                    return data;
+                })
+                .value();
         });
-    },
-
-    isEmbedded: function() {
-        return this.data.embedded;
+        context.methods = _.reject(context.methods, function(method){ return method.signatures.length == 0; });
     },
 
     getContext: function(contextClass) {
@@ -48,9 +65,9 @@ _.extend(App.Dsl.prototype, {
         return _.chain(this.data.contexts)
             .pluck('methods')
             .flatten()
-            .pluck('plugin')
-            .filter()
-            .unique()
+            .pluck('plugins')
+            .flatten()
+            .unique(false, function(item) { return item.name; })
             .sortBy(function (item) {
                 return item.title.toLowerCase();
             })
@@ -77,9 +94,11 @@ _.extend(App.Dsl.prototype, {
         var usages = [];
         _.forEach(this.data.contexts, function(context) {
             context.methods.forEach(function(method) {
-                if (method.plugin === plugin) {
-                    usages.push({method: method, context: context});
-                }
+                method.plugins.forEach(function(methodPlugin) {
+                    if (methodPlugin === plugin) {
+                        usages.push({method: method, context: context});
+                    }
+                });
             });
         });
         return usages;
@@ -164,6 +183,10 @@ _.extend(App.Dsl.prototype, {
             if (paramTokens.length || !signature.context) {
                 text = '(' + text + ')';
             }
+            var deprecatedText = signature.deprecatedText;
+            if (deprecatedText && deprecatedText.substring(deprecatedText.length - 1) === '.') {
+                deprecatedText = deprecatedText.substring(0, deprecatedText.length - 1);
+            }
 
             var data = {
                 name: method.name,
@@ -172,6 +195,8 @@ _.extend(App.Dsl.prototype, {
                 index: index,
                 availableSince: signature.availableSince,
                 deprecated: signature.deprecated,
+                deprecatedText: deprecatedText,
+                deprecatedHtml: signature.deprecatedHtml || deprecatedText,
                 generated: signature.generated,
                 extension: signature.extension,
                 required: signature.required,
@@ -188,7 +213,7 @@ _.extend(App.Dsl.prototype, {
                     var simpleName = typeTokens[typeTokens.length - 1];
                     return {
                         paramName: parameter.name,
-                        values: parameter.enumConstants.map(function(v) { return simpleName + '.' + v; })
+                        values: parameter.enumConstants.map(function(v) { return parameter.type === 'String' ? '\'' + v + '\'' : simpleName + '.' + v; })
                     };
                 })
                 .value();
@@ -197,15 +222,20 @@ _.extend(App.Dsl.prototype, {
                 data.enums = enums;
             }
 
-            data.methodPlugin = method.plugin;
-            if (signature.plugin) {
-                data.plugin = signature.plugin;
-                var pluginData = window.updateCenter.data.plugins[signature.plugin.id];
-                if (pluginData) {
-                    data.plugin.title = pluginData.title;
-                } else {
-                    console.log('plugin not found', signature.plugin.id);
-                }
+            data.methodPlugins = method.plugins;
+            if (signature.plugins) {
+                data.plugins = signature.plugins;
+                data.plugins.forEach(function (plugin) {
+                    plugin.name = plugin.id;
+
+                    var pluginData = window.updateCenter.data.plugins[plugin.id];
+                    if (pluginData) {
+                        plugin.title = pluginData.title;
+                        plugin.wiki = pluginData.wiki;
+                    } else {
+                        plugin.title = plugin.id;
+                    }
+                });
             }
 
             return data;

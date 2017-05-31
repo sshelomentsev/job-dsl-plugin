@@ -12,6 +12,7 @@ import javaposse.jobdsl.dsl.helpers.toplevel.NotificationContext
 import javaposse.jobdsl.dsl.helpers.toplevel.ThrottleConcurrentBuildsContext
 import javaposse.jobdsl.dsl.helpers.triggers.TriggerContext
 import javaposse.jobdsl.dsl.helpers.wrapper.WrapperContext
+import javaposse.jobdsl.dsl.jobs.MatrixJob
 
 import static javaposse.jobdsl.dsl.Preconditions.checkArgument
 import static javaposse.jobdsl.dsl.Preconditions.checkNotNull
@@ -24,8 +25,8 @@ abstract class Job extends Item {
     String templateName = null // Optional
     String previousNamesRegex = null // Optional
 
-    protected Job(JobManagement jobManagement) {
-        super(jobManagement)
+    protected Job(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     /**
@@ -114,22 +115,25 @@ abstract class Job extends Item {
      */
     @RequiresPlugin(id = 'throttle-concurrents')
     void throttleConcurrentBuilds(@DslContext(ThrottleConcurrentBuildsContext) Closure throttleClosure) {
-        ThrottleConcurrentBuildsContext throttleContext = new ThrottleConcurrentBuildsContext()
+        ThrottleConcurrentBuildsContext throttleContext = new ThrottleConcurrentBuildsContext(jobManagement, this)
         ContextHelper.executeInContext(throttleClosure, throttleContext)
 
         configure { Node project ->
             project / 'properties' / 'hudson.plugins.throttleconcurrents.ThrottleJobProperty' {
-                maxConcurrentPerNode throttleContext.maxConcurrentPerNode
-                maxConcurrentTotal throttleContext.maxConcurrentTotal
-                throttleEnabled throttleContext.throttleDisabled ? 'false' : 'true'
-                if (throttleContext.categories.isEmpty()) {
-                    throttleOption 'project'
-                } else {
-                    throttleOption 'category'
-                }
+                maxConcurrentPerNode(throttleContext.maxConcurrentPerNode)
+                maxConcurrentTotal(throttleContext.maxConcurrentTotal)
+                throttleEnabled(!throttleContext.throttleDisabled)
+                throttleOption(throttleContext.categories.empty ? 'project' : 'category')
                 categories {
                     throttleContext.categories.each { c ->
-                        string c
+                        string(c)
+                    }
+                }
+                if (jobManagement.isMinimumPluginVersionInstalled('throttle-concurrents', '1.8.3')
+                        && this instanceof MatrixJob) {
+                    matrixOptions {
+                        throttleMatrixBuilds(throttleContext.throttleMatrixBuilds)
+                        throttleMatrixConfigurations(throttleContext.throttleMatrixConfigurations)
                     }
                 }
             }
@@ -141,10 +145,8 @@ abstract class Job extends Item {
      *
      * @since 1.25
      */
-    @RequiresPlugin(id = 'lockable-resources')
+    @RequiresPlugin(id = 'lockable-resources', minimumVersion = '1.7')
     void lockableResources(String resources, @DslContext(LockableResourcesContext) Closure lockClosure = null) {
-        jobManagement.logPluginDeprecationWarning('lockable-resources', '1.7')
-
         LockableResourcesContext lockContext = new LockableResourcesContext(jobManagement)
         ContextHelper.executeInContext(lockClosure, lockContext)
 
@@ -296,20 +298,6 @@ abstract class Job extends Item {
     }
 
     /**
-     * Set the priority of the job. Default value is 100.
-     *
-     * @since 1.15
-     */
-    @RequiresPlugin(id = 'PrioritySorter')
-    @Deprecated
-    void priority(int value) {
-        configure { Node project ->
-            Node node = new Node(project / 'properties', 'hudson.queueSorter.PrioritySorterJobProperty')
-            node.appendNode('priority', value)
-        }
-    }
-
-    /**
      * Defines a timespan (in seconds) to wait for additional events (pushes, check-ins) before triggering a build.
      *
      * @since 1.16
@@ -422,10 +410,8 @@ abstract class Job extends Item {
      *
      * @since 1.26
      */
-    @RequiresPlugin(id = 'notification')
+    @RequiresPlugin(id = 'notification', minimumVersion = '1.8')
     void notifications(@DslContext(NotificationContext) Closure notificationClosure) {
-        jobManagement.logPluginDeprecationWarning('notification', '1.8')
-
         NotificationContext notificationContext = new NotificationContext(jobManagement)
         ContextHelper.executeInContext(notificationClosure, notificationContext)
 
@@ -461,6 +447,7 @@ abstract class Job extends Item {
      */
     @RequiresPlugin(id = 'delivery-pipeline-plugin')
     void deliveryPipelineConfiguration(String stageName, String taskName = null) {
+        jobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
         if (stageName || taskName) {
             configure { Node project ->
                 project / 'properties' / 'se.diabol.jenkins.pipeline.PipelineProperty' {

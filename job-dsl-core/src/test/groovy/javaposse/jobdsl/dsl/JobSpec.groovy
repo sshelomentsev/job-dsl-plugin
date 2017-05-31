@@ -419,18 +419,19 @@ class JobSpec extends Specification {
     def 'throttle concurrents enabled as project alone'() {
         when:
         job.throttleConcurrentBuilds {
-            maxPerNode 1
-            maxTotal 2
+            maxPerNode(1)
+            maxTotal(2)
         }
 
         then:
-        def throttleNode = job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]
-
-        throttleNode.maxConcurrentPerNode[0].value() == 1
-        throttleNode.maxConcurrentTotal[0].value() == 2
-        throttleNode.throttleEnabled[0].value() == 'true'
-        throttleNode.throttleOption[0].value() == 'project'
-        throttleNode.categories[0].children().size() == 0
+        with(job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]) {
+            children().size() == 5
+            maxConcurrentPerNode[0].value() == 1
+            maxConcurrentTotal[0].value() == 2
+            throttleEnabled[0].value() == true
+            throttleOption[0].value() == 'project'
+            categories[0].children().size() == 0
+        }
         1 * jobManagement.requirePlugin('throttle-concurrents')
     }
 
@@ -441,29 +442,57 @@ class JobSpec extends Specification {
         }
 
         then:
-        def throttleNode = job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]
-        throttleNode.throttleEnabled[0].value() == 'false'
+        with(job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]) {
+            children().size() == 5
+            maxConcurrentPerNode[0].value() == 0
+            maxConcurrentTotal[0].value() == 0
+            throttleEnabled[0].value() == false
+            throttleOption[0].value() == 'project'
+            categories[0].children().size() == 0
+        }
         1 * jobManagement.requirePlugin('throttle-concurrents')
     }
 
     def 'throttle concurrents enabled as part of categories'() {
         when:
         job.throttleConcurrentBuilds {
-            maxPerNode 1
-            maxTotal 2
+            maxPerNode(1)
+            maxTotal(2)
             categories(['cat-1', 'cat-2'])
         }
 
         then:
-        def throttleNode = job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]
-        throttleNode.maxConcurrentPerNode[0].value() == 1
-        throttleNode.maxConcurrentTotal[0].value() == 2
-        throttleNode.throttleEnabled[0].value() == 'true'
-        throttleNode.throttleOption[0].value() == 'category'
-        throttleNode.categories[0].children().size() == 2
-        throttleNode.categories[0].string[0].value() == 'cat-1'
-        throttleNode.categories[0].string[1].value() == 'cat-2'
+        with(job.node.properties[0].'hudson.plugins.throttleconcurrents.ThrottleJobProperty'[0]) {
+            children().size() == 5
+            maxConcurrentPerNode[0].value() == 1
+            maxConcurrentTotal[0].value() == 2
+            throttleEnabled[0].value() == true
+            throttleOption[0].value() == 'category'
+            categories[0].children().size() == 2
+            categories[0].string[0].value() == 'cat-1'
+            categories[0].string[1].value() == 'cat-2'
+        }
         1 * jobManagement.requirePlugin('throttle-concurrents')
+    }
+
+    def 'throttle concurrents matrix options not allowed for non-matrix jobs'() {
+        when:
+        job.throttleConcurrentBuilds {
+            throttleMatrixBuilds()
+        }
+
+        then:
+        Exception e = thrown(DslScriptException)
+        e.message =~ 'throttleMatrixBuilds can only be used in matrix jobs'
+
+        when:
+        job.throttleConcurrentBuilds {
+            throttleMatrixConfigurations()
+        }
+
+        then:
+        e = thrown(DslScriptException)
+        e.message =~ 'throttleMatrixConfigurations can only be used in matrix jobs'
     }
 
     def 'disable defaults to true'() {
@@ -517,7 +546,7 @@ class JobSpec extends Specification {
             children().size() == 1
             resourceNames[0].value() == 'lock-resource'
         }
-        1 * jobManagement.requirePlugin('lockable-resources')
+        1 * jobManagement.requireMinimumPluginVersion('lockable-resources', '1.7')
     }
 
     def 'lockable resources with all parameters'() {
@@ -536,9 +565,7 @@ class JobSpec extends Specification {
             resourceNumber[0].value() == 1
             labelName[0].value() == 'foo'
         }
-        1 * jobManagement.requirePlugin('lockable-resources')
         1 * jobManagement.requireMinimumPluginVersion('lockable-resources', '1.7')
-        1 * jobManagement.logPluginDeprecationWarning('lockable-resources', '1.7')
     }
 
     def 'lockable resources with label only'() {
@@ -552,8 +579,7 @@ class JobSpec extends Specification {
             children().size() == 1
             labelName[0].value() == 'HEAVY_RESOURCE'
         }
-        1 * jobManagement.requirePlugin('lockable-resources')
-        1 * jobManagement.logPluginDeprecationWarning('lockable-resources', '1.7')
+        2 * jobManagement.requireMinimumPluginVersion('lockable-resources', '1.7')
     }
 
     def 'lockable resources resource or label have to be defined'() {
@@ -741,16 +767,6 @@ class JobSpec extends Specification {
         job.node.jdk[0].value() == 'JDK1.6.0_17'
     }
 
-    def 'priority constructs xml'() {
-        when:
-        job.priority(99)
-
-        then:
-        job.node.properties.'hudson.queueSorter.PrioritySorterJobProperty'.priority[0].value() == 99
-        1 * jobManagement.requirePlugin('PrioritySorter')
-        1 * jobManagement.logDeprecationWarning()
-    }
-
     def 'add a quiet period'() {
         when:
         job.quietPeriod()
@@ -892,6 +908,7 @@ class JobSpec extends Specification {
             stageName[0].value() == 'qa'
         }
         1 * jobManagement.requirePlugin('delivery-pipeline-plugin')
+        1 * jobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
     }
 
     def 'delivery pipeline configuration with stage name'() {
@@ -906,6 +923,7 @@ class JobSpec extends Specification {
             stageName[0].value() == 'qa'
         }
         1 * jobManagement.requirePlugin('delivery-pipeline-plugin')
+        1 * jobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
     }
 
     def 'delivery pipeline configuration with task name'() {
@@ -920,6 +938,7 @@ class JobSpec extends Specification {
             taskName[0].value() == 'integration-tests'
         }
         1 * jobManagement.requirePlugin('delivery-pipeline-plugin')
+        1 * jobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
     }
 
     def 'set notification with default properties'() {
@@ -931,13 +950,15 @@ class JobSpec extends Specification {
         then:
         with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 1
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 3
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 6
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint.com'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'HTTP'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'JSON'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'all'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 30000
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].loglines[0].value() == 0
         }
-        1 * jobManagement.requirePlugin('notification')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
+        1 * jobManagement.requireMinimumPluginVersion('notification', '1.8')
     }
 
     def 'set notification with all required properties'() {
@@ -949,19 +970,18 @@ class JobSpec extends Specification {
         then:
         with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 1
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 3
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 6
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint.com'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'TCP'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'XML'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'all'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 30000
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].loglines[0].value() == 0
         }
-        1 * jobManagement.requirePlugin('notification')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
+        1 * jobManagement.requireMinimumPluginVersion('notification', '1.8')
     }
 
     def 'set notification with invalid parameters'(String url, String protocol, String format, String event) {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.6') >> true
-
         when:
         job.notifications {
             endpoint(url, protocol, format) {
@@ -988,100 +1008,11 @@ class JobSpec extends Specification {
     }
 
     def 'set notification with default properties and using a closure'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.6') >> true
-
         when:
         job.notifications {
             endpoint('http://endpoint.com') {
                 event('started')
                 timeout(10000)
-            }
-        }
-
-        then:
-        with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 1
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 5
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint.com'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'HTTP'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'JSON'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'started'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 10000
-        }
-        1 * jobManagement.requirePlugin('notification')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
-    }
-
-    def 'set notification with all required properties and using a closure'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.6') >> true
-
-        when:
-        job.notifications {
-            endpoint('http://endpoint.com', 'TCP', 'XML') {
-                event('started')
-                timeout(10000)
-            }
-        }
-
-        then:
-        with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 1
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 5
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint.com'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'TCP'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'XML'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'started'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 10000
-        }
-        1 * jobManagement.requirePlugin('notification')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
-    }
-
-    def 'set notification with multiple endpoints'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.6') >> true
-
-        when:
-        job.notifications {
-            endpoint('http://endpoint1.com')
-            endpoint('http://endpoint2.com')
-        }
-
-        then:
-        with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 2
-
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 5
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint1.com'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'HTTP'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'JSON'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'all'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 30000
-
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].children().size() == 5
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].url[0].text() == 'http://endpoint2.com'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].protocol[0].text() == 'HTTP'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].format[0].text() == 'JSON'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].event[0].text() == 'all'
-            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].timeout[0].value() == 30000
-        }
-        1 * jobManagement.requirePlugin('notification')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
-    }
-
-    def 'set notification with default properties and using a closure (for 1.8 version)'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.6') >> true
-        jobManagement.isMinimumPluginVersionInstalled('notification', '1.8') >> true
-
-        when:
-        job.notifications {
-            endpoint('http://endpoint.com') {
-                event('started')
-                timeout(10000)
-                logLines(10)
             }
         }
 
@@ -1094,10 +1025,62 @@ class JobSpec extends Specification {
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'JSON'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'started'
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 10000
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].loglines[0].value() == 0
+        }
+        1 * jobManagement.requireMinimumPluginVersion('notification', '1.8')
+    }
+
+    def 'set notification with all required properties and using a closure'() {
+        when:
+        job.notifications {
+            endpoint('http://endpoint.com', 'TCP', 'XML') {
+                event('started')
+                timeout(10000)
+                logLines(10)
+            }
+        }
+
+        then:
+        with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 1
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 6
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint.com'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'TCP'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'XML'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'started'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 10000
             endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].loglines[0].value() == 10
         }
-        1 * jobManagement.requirePlugin('notification')
         1 * jobManagement.requireMinimumPluginVersion('notification', '1.8')
-        1 * jobManagement.logPluginDeprecationWarning('notification', '1.8')
+    }
+
+    def 'set notification with multiple endpoints'() {
+        when:
+        job.notifications {
+            endpoint('http://endpoint1.com')
+            endpoint('http://endpoint2.com')
+        }
+
+        then:
+        with(job.node.properties[0].'com.tikal.hudson.plugins.notification.HudsonNotificationProperty') {
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'.size() == 2
+
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].children().size() == 6
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].url[0].text() == 'http://endpoint1.com'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].protocol[0].text() == 'HTTP'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].format[0].text() == 'JSON'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].event[0].text() == 'all'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].timeout[0].value() == 30000
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[0].loglines[0].value() == 0
+
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].children().size() == 6
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].url[0].text() == 'http://endpoint2.com'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].protocol[0].text() == 'HTTP'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].format[0].text() == 'JSON'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].event[0].text() == 'all'
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].timeout[0].value() == 30000
+            endpoints.'com.tikal.hudson.plugins.notification.Endpoint'[1].loglines[0].value() == 0
+        }
+        1 * jobManagement.requireMinimumPluginVersion('notification', '1.8')
     }
 }

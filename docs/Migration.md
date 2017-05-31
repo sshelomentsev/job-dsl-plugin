@@ -1,3 +1,654 @@
+## Migrating to 1.64
+
+### HTML Publisher Plugin
+
+Support for versions older than 1.13 of the
+[HTML Publisher Plugin](https://wiki.jenkins-ci.org/display/JENKINS/HTML+Publisher+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### Gradle Plugin
+
+Support for versions older than 1.26 of the
+[Gradle Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Gradle+Plugin) is [[deprecated|Deprecation-Policy]]
+and will be removed.
+
+## Migrating to 1.62
+
+### Parameterized Remote Trigger Plugin
+
+Support for versions older than 2.0 of the
+[Parameterized Remote Trigger Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Parameterized+Remote+Trigger+Plugin)
+is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### Build Flow Plugin
+
+The [Build Flow Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Build+Flow+Plugin) has been removed from the Update
+Center due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a consequence the DSL
+support is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### Active Choices Plugin
+
+The [Active Choices Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Active+Choices+Plugin) has been removed from the
+Update Center due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a consequence the
+DSL support is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### PostBuildScript Plugin
+
+The [PostBuildScript Plugin](https://wiki.jenkins-ci.org/display/JENKINS/PostBuildScript+Plugin) has been removed from
+the Update Center due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a consequence
+the DSL support is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### ArtifactDeployer Plugin
+
+The [ArtifactDeployer Plugin](https://wiki.jenkins-ci.org/display/JENKINS/ArtifactDeployer+Plugin) has been removed from
+the Update Center due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a consequence
+the DSL support is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### Subversion Tagging Plugin
+
+The [Subversion Tagging Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Subversion+Tagging+Plugin) has been removed
+from the Update Center due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a
+consequence the DSL support is [[deprecated|Deprecation-Policy]] and will be removed.
+
+### Grails Plugin
+
+The [Grails Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Grails+Plugin) has been removed from the Update Center
+due to [Security Vulnerabilities](https://jenkins.io/security/advisory/2017-04-10/). As a consequence the DSL support is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+## Migrating to 1.61
+
+### Stash Notifier Plugin
+
+Support for versions older than 1.11.6 of the
+[Stash Notifier Plugin](https://wiki.jenkins-ci.org/display/JENKINS/StashNotifier+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### Join Plugin
+
+Support for versions older than 1.21 of the [Join Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Join+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+## Migrating to 1.60
+
+### Script Security
+
+Starting with Job DSL 1.60, script security for Job DSL scripts is enabled by default if Jenkins
+security is enabled. As a consequence, DSL scripts have either to be approved by an Jenkins administrator or run in an
+restricted sandbox. To avoid loading arbitrary code from the workspace without approval, the script directory is not 
+added to the classpath and additional classpath entries are not supported when security is enabled. Thus importing
+classes from the workspace is not possible and the "Additional Classpath" option is not available.
+
+Note that some operators in [[configure blocks|The Configure Block]] are not available when running in the restricted
+sandbox.
+
+When using the sandbox, Jenkins access control checks are also applied. For this to work, the DSL job needs to run as
+a particular user. This is generally accomplished by installing and configuring the
+[Authorize Project plugin](https://wiki.jenkins-ci.org/display/JENKINS/Authorize+Project+plugin).
+
+To restore the old behavior, Job DSL script security can be disabled on the "Configure Global Security" page. But this
+decision should be taken with care and only if understanding the consequences as it would allow users to run arbitrary
+code within the Jenkins process (even changing its security settings or running shell commands on the server).
+
+See [[Script Security]] for details.
+
+## Migrating to 1.59
+
+### Mattermost
+
+Support for the [Mattermost Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Mattermost+Plugin) is
+[deprecated|Deprecation-Policy]] and will be removed. Use the syntax provided by the [[Automatically Generated DSL]]
+instead.
+
+DSL prior to 1.59
+```
+job('example') {
+    publishers {
+        mattermost {
+            endpoint(String endpoint)
+            showCommitList(boolean showCommitList = true)
+            customMessage(String customMessage)
+            icon(String icon)
+            includeTestSummary(boolean includeTestSummary = true)
+            notifyAborted(boolean notifyAborted = true)
+            notifyBackToNormal(boolean notifyBackToNormal = true)
+            notifyFailure(boolean notifyFailure = true)
+            notifyNotBuilt(boolean notifyNotBuilt = true)
+            notifyRepeatedFailure(boolean notifyRepeatedFailure = true)
+            notifySuccess(boolean notifySuccess = true)
+            notifyUnstable(boolean notifyUnstable = true)
+            room(String room)
+            notifyBuildStart(boolean notifyBuildStart = true)
+        }
+    }
+}
+```
+
+DSL since 1.59
+```
+job('example') {
+    publishers {
+        mattermostNotifier {
+            endpoint(String value)
+            commitInfoChoice(String value)
+            customMessage(String value)
+            includeCustomMessage(boolean value)
+            icon(String value)
+            includeTestSummary(boolean value)
+            notifyAborted(boolean value)
+            notifyBackToNormal(boolean value)
+            notifyFailure(boolean value)
+            notifyNotBuilt(boolean value)
+            notifyRepeatedFailure(boolean value)
+            notifySuccess(boolean value)
+            notifyUnstable(boolean value)
+            room(String value)
+            startNotification(boolean value)
+        }
+    }
+}
+```
+
+## Migrating to 1.58
+
+### Config Files
+
+The syntax for creating config files is changing to allow new features. The methods `customConfigFile`,
+`mavenSettingsConfigFile`, `globalMavenSettingsConfigFile` and `managedScriptConfigFile` are
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+Finding config files by name is also [[deprecated|Deprecation-Policy]] and will be removed. Names must not be unique so
+lookup by name can yield multiple results. Use the unique config ID instead.
+
+DSL prior to 1.58
+```groovy
+customConfigFile('ACME Settings') {
+    comment('Settings for ACME tools')
+    content(readFileFromWorkspace('acme/settings.json'))
+}
+
+mavenSettingsConfigFile('Company Settings') {
+    comment('Company Maven Settings')
+    content(readFileFromWorkspace('maven/settings.xml'))
+    replaceAll()
+    serverCredentials('company-A', 'company-A-maven-repository-credentials')
+    serverCredentials('company-B', 'company-B-maven-repository-credentials')
+}
+
+globalMavenSettingsConfigFile('Company Settings') {
+    comment('Company Maven Settings')
+    content(readFileFromWorkspace('maven/settings.xml'))
+    replaceAll()
+    serverCredentials('company-A', 'company-A-maven-repository-credentials')
+    serverCredentials('company-B', 'company-B-maven-repository-credentials')
+}
+
+managedScriptConfigFile('Example') {
+    comment('My script')
+    content('echo Hello $1 and $2')
+    arguments('NAME_1', 'NAME_2')
+}
+
+mavenJob('example-1') {
+    providedSettings('Company Settings')
+    providedGlobalSettings('Company Settings')
+}
+
+job('example-2') {
+    wrappers {
+        configFiles {
+            file('ACME Settings') {
+                variable('CONFIG_FILE')
+            }
+            mavenSettings('Company Settings') {
+                targetLocation('settings.xml')
+            }
+            globalMavenSettings('Company Settings') {
+                targetLocation('global-settings.xml')
+            }
+        }
+    }
+    steps {
+        managedScript('Example') {
+            arguments('foo', 'bar')
+        }
+        maven {
+            providedSettings('Company Settings')
+            providedGlobalSettings('Company Settings')
+        }
+    }
+}
+```
+
+DSL since 1.58
+```groovy
+configFiles {
+    customConfig
+        id('acme-settings')
+        name('ACME Settings') {
+        comment('Settings for ACME tools')
+        content(readFileFromWorkspace('acme/settings.json'))
+    }
+    mavenSettingsConfig
+        id('company-settings')
+        name('Company Settings')
+        comment('Company Maven Settings')
+        content(readFileFromWorkspace('maven/settings.xml'))
+        isReplaceAll(true)
+        serverCredentialMappings {
+            serverCredentialMapping {
+                serverId('company-A')
+                credentialsId('company-A-maven-repository-credentials')
+            }
+        }
+        serverCredentialMappings {
+            serverCredentialMapping {
+                serverId('company-B')
+                credentialsId('company-B-maven-repository-credentials')
+            }
+        }
+    }
+    globalMavenSettingsConfig {
+        id('global-company-settings')
+        name('Company Settings') {
+        comment('Company Maven Settings')
+        content(readFileFromWorkspace('maven/settings.xml'))
+        isReplaceAll()
+        serverCredentialMappings {
+            serverCredentialMapping {
+                serverId('company-A')
+                credentialsId('company-A-maven-repository-credentials')
+            }
+        }
+        serverCredentialMappings {
+            serverCredentialMapping {
+                serverId('company-B')
+                credentialsId('company-B-maven-repository-credentials')
+            }
+        }
+    }
+    scriptConfig {
+        id('example')
+        name('Example')
+        comment('My script')
+        content('echo Hello $1 and $2')
+        args {
+            arg {
+                name('NAME_1')
+            }
+            arg {
+                name('NAME_2')
+            }
+        }
+    }
+}
+
+mavenJob('example-1') {
+    providedSettings('company-settings')
+    providedGlobalSettings('global-company-settings')
+}
+
+job('example-2') {
+    wrappers {
+        configFiles {
+            file('acme-settings') {
+                variable('CONFIG_FILE')
+            }
+            mavenSettings('company-settings') {
+                targetLocation('settings.xml')
+            }
+            globalMavenSettings('global-company-settings') {
+                targetLocation('global-settings.xml')
+            }
+        }
+    }
+    steps {
+        managedScript('example') {
+            arguments('foo', 'bar')
+        }
+        maven {
+            providedSettings('company-settings')
+            providedGlobalSettings('global-company-settings')
+        }
+    }
+}
+```
+
+The classes `javaposse.jobdsl.dsl.Config`, `javaposse.jobdsl.dsl.ConfigFile`,
+`javaposse.jobdsl.dsl.MavenSettingsConfigFile`, `javaposse.jobdsl.dsl.ParametrizedConfigFile` and
+`javaposse.jobdsl.plugin.ConfigFileProviderHelper` as well as the methods `createOrUpdateConfigFile` and
+`getConfigFileId` in `javaposse.jobdsl.dsl.JobManagement` and it's implementing classes are
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### GitLab
+
+Support for versions older than 1.4.0 of the [GitLab Plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitLab+Plugin)
+is [[deprecated|Deprecation-Policy]] and will be removed.
+
+## Migrating to 1.57
+
+### Rbenv
+
+Support for versions older than 0.0.17 of the [Rbenv Plugin](https://wiki.jenkins-ci.org/display/JENKINS/rbenv+plugin)
+is [[deprecated|Deprecation-Policy]] and will be removed.
+
+## Migrating to 1.56
+
+### SSH Agent
+
+Support for versions older than 1.5 of the
+[SSH Agent Plugin](https://wiki.jenkins-ci.org/display/JENKINS/SSH+Agent+Plugin) is [[deprecated|Deprecation-Policy]]
+and will be removed.
+
+## Migrating to 1.55
+
+### ScriptRequest
+
+Some constructors and the `location` property in `javaposse.jobdsl.dsl.ScriptRequest` are
+[[deprecated|Deprecation-Policy]] and will be removed. The `body` and `scriptPath` properties should be used instead.
+The class is part of the internal implementation and should not affect DSL scripts.
+
+## Migrating to 1.54
+
+### Embedded API Viewer
+
+The short URL for the embedded API Viewer http://localhost:8080/plugin/job-dsl/api-viewer is
+[[deprecated|Deprecation-Policy]] and will be removed. Use http://localhost:8080/plugin/job-dsl/api-viewer/index.html
+instead.
+
+### S3
+
+Support for the [S3 Plugin](https://wiki.jenkins-ci.org/display/JENKINS/S3+Plugin) is [deprecated|Deprecation-Policy]]
+and will be removed. Use the syntax provided by the [[Automatically Generated DSL]] instead.
+
+DSL prior to 1.54
+```groovy
+job('example') {
+    publishers {
+        s3('myProfile') {
+            entry('foo', 'bar', 'eu-west-1') {
+                storageClass('REDUCED_REDUNDANCY')
+                noUploadOnFailure()
+                uploadFromSlave()
+                managedArtifacts()
+                useServerSideEncryption()
+                flatten()
+            }
+            metadata('key', 'value')
+        }
+    }
+}
+```
+
+DSL since 1.54
+```groovy
+job('example') {
+    publishers {
+        s3BucketPublisher {
+            profileName('myProfile')
+            entries {
+                entry {
+                    bucket('bar')
+                    sourceFile('foo')
+                    selectedRegion('eu-west-1')
+                    storageClass('REDUCED_REDUNDANCY')
+                    noUploadOnFailure(true)
+                    uploadFromSlave(true)
+                    managedArtifacts(true)
+                    useServerSideEncryption(true)
+                    flatten(true)
+                }
+            }
+            userMetadata {
+                metadataPair {
+                    key('key')
+                    value('value')
+                }
+            }
+        }
+    }
+}
+```
+
+### Delivery Pipeline
+
+Support for versions older than 0.10.0 of the
+[Delivery Pipeline Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Delivery+Pipeline+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### GitHub Branch Source
+
+Support for versions older than 1.8 of the
+[GitHub Branch Source Plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+Branch+Source+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### JobDslPlugin
+
+The class `javaposse.jobdsl.plugin.JobDslPlugin` is [[deprecated|Deprecation-Policy]] and will be removed. It has been
+deprecated because the constructor of the super class `hudson.Plugin` has been deprecated. See the documentation of
+`hudson.Plugin` for details.
+
+## Migrating to 1.53
+
+### Overriding Job, Folder or View Names
+
+The ability to override the name of a job, folder or view is deprecated [[deprecated|Deprecation-Policy]] and will be
+removed. The name has to be set in the factory method that is creating the job, folder or view.
+
+DSL prior to 1.53
+```groovy
+job('example-1') {
+    name = 'other-1'
+}
+
+folder('example-2') {
+    name = 'other-2'
+}
+
+listView('example-3') {
+    name = 'other-3'
+}
+```
+
+DSL since 1.53
+```groovy
+job('other-1') {
+}
+
+folder('other-2') {
+}
+
+listView('other-3') {
+}
+```
+
+### GitHub Branch Source
+
+The `ignoreOnPushNotifications` option in the GitHub branch source context is not needed. It has been
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+DSL prior to 1.53
+```groovy
+multibranchPipelineJob('example') {
+    branchSources {
+        github {
+            ignoreOnPushNotification()
+        }
+    }
+}
+```
+
+DSL since 1.53
+```groovy
+multibranchPipelineJob('example') {
+    branchSources {
+        github {
+        }
+    }
+}
+```
+
+## Migrating to 1.52
+
+### Git
+
+Support for versions older than 2.5.3 of the
+[Git Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Git+Plugin) is [[deprecated|Deprecation-Policy]]
+and will be removed.
+
+### Multijob
+
+Support for versions older than 1.22 of the
+[Multijob Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Multijob+Plugin) is [[deprecated|Deprecation-Policy]] and
+will be removed.
+
+### Exclusion
+
+Support for versions older than 0.12 of the
+[Exclusion Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Exclusion-Plugin) is [[deprecated|Deprecation-Policy]]
+and will be removed.
+
+### Rundeck
+
+Support for the [RunDeck Plugin](https://wiki.jenkins-ci.org/display/JENKINS/RunDeck+Plugin) is
+[deprecated|Deprecation-Policy]] and will be removed. Use the syntax provided by the [[Automatically Generated DSL]]
+instead.
+
+DSL prior to 1.52
+```groovy
+job('example') {
+    triggers {
+        rundeck {
+            jobIdentifiers(
+                    '2027ce89-7924-4ecf-a963-30090ada834f',
+                    'my-project-name:main-group/sub-group/my-job'
+            )
+            executionStatuses('FAILED', 'ABORTED')
+        }
+    }
+    publishers {
+        rundeck('13eba461-179d-40a1-8a08-bafee33fdc12') {
+            rundeckInstance('prod')
+            options(artifact: 'app', env: 'dev')
+            option('version', '1.1')
+            tag('#deploy')
+            nodeFilters(hostname: 'dev(\\d+).company.net')
+            nodeFilter('tags', 'www+dev')
+            shouldWaitForRundeckJob()
+            shouldFailTheBuild()
+            includeRundeckLogs()
+        }
+    }
+}
+```
+
+DSL since 1.52
+```groovy
+job('example') {
+    triggers {
+        rundeckTrigger {
+            jobsIdentifiers([
+                    '2027ce89-7924-4ecf-a963-30090ada834f',
+                    'my-project-name:main-group/sub-group/my-job'
+            ])
+            executionStatuses(['FAILED', 'ABORTED'])
+            filterJobs(true)
+        }
+    }
+    publishers {
+        rundeckNotifier {
+            jobId('13eba461-179d-40a1-8a08-bafee33fdc12')
+            rundeckInstance('prod')
+            options(['artifact=app', 'env=dev', 'version=1.1'].join('\n'))
+            tags('#deploy')
+            nodeFilters(['hostname=dev(\\d+).company.net', 'tags=www+dev'].join('\n'))
+            shouldWaitForRundeckJob(true)
+            shouldFailTheBuild(true)
+            includeRundeckLogs(true)
+            tailLog(false)
+        }
+    }
+}
+```
+
+## Migrating to 1.51
+
+### Rundeck
+
+Support for versions older than 3.5.4 of the
+[RunDeck Plugin](https://wiki.jenkins-ci.org/display/JENKINS/RunDeck+Plugin) is [[deprecated|Deprecation-Policy]] and
+will be removed.
+
+### RVM
+
+Support for versions older than 0.6 of the [RVM Plugin](https://wiki.jenkins-ci.org/display/JENKINS/RVM+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+### Ruby Runtime
+
+Support for versions older than 0.12 of the
+[Ruby Runtime Plugin](https://wiki.jenkins-ci.org/display/JENKINS/Ruby+Runtime+Plugin) is
+[[deprecated|Deprecation-Policy]] and will be removed.
+
+## Migrating to 1.49
+
+### ScriptLocation
+
+The `scriptLocation` property of `javaposse.jobdsl.plugin.ExecuteDslScripts` and the
+`javaposse.jobdsl.plugin.ExecuteDslScripts.ScriptLocation` class have been [[deprecated|Deprecation-Policy]] and will be
+removed. The properties of `scriptLocation` can now be set directly on `ExecuteDslScripts`.
+
+Pipeline syntax prior to 1.49
+```groovy
+node {
+    step([
+        $class: 'ExecuteDslScripts',
+        scriptLocation: [scriptText: 'job("example-2")'],
+    ])
+    step([
+        $class: 'ExecuteDslScripts',
+        scriptLocation: [
+            targets: ['jobs/projectA/*.groovy', 'jobs/common.groovy'].join('\n'),
+            ignoreMissingFiles: true
+        ]
+    ])
+}
+```
+
+Pipeline syntax since to 1.49
+```groovy
+node {
+    step([
+        $class: 'ExecuteDslScripts',
+        scriptText: 'job("example-2")'
+    ])
+    step([
+        $class: 'ExecuteDslScripts',
+        targets: ['jobs/projectA/*.groovy', 'jobs/common.groovy'].join('\n'),
+        ignoreMissingFiles: true
+    ])
+}
+```
+
+### JobManagement
+
+The return type of the `getParameters()` method in `javaposse.jobdsl.dsl.JobManagement` changed from
+`Map<String, String>` to `Map<String, Object>`.
+
+## Migrating to 1.48
+
+### Pipeline Compatibility
+
+The classes `javaposse.jobdsl.plugin.WorkspaceProtocol`, `javaposse.jobdsl.plugin.WorkspaceUrlConnection` and
+`javaposse.jobdsl.plugin.WorkspaceUrlHandler` as well as some constructors in
+`javaposse.jobdsl.plugin.JenkinsJobManagement`, `javaposse.jobdsl.plugin.ExecuteDslScripts` and
+`javaposse.jobdsl.plugin.ScriptRequestGenerator` are [[deprecated|Deprecation-Policy]] and will be removed. These
+classes are part of the internal implementation and should not affect DSL scripts.
+
+The classes `javaposse.jobdsl.plugin.actions.GeneratedObjectsBuildAction` and
+`javaposse.jobdsl.plugin.actions.GeneratedObjectsBuildRunAction` are also deprecated and will be removed. Use
+`javaposse.jobdsl.plugin.actions.GeneratedObjectsRunAction` instead.
+
 ## Migrating to 1.47
 
 ### Pipeline
@@ -761,7 +1412,7 @@ job('example-1') {
                 block {
                     buildStepFailure('FAILURE')
                     failure('FAILURE')
-                    unstable('UNSTABLE']
+                    unstable('UNSTABLE')
                 }
             }
         }
@@ -1336,7 +1987,7 @@ listView('four') {
 }
 nestedView('five') {
 }
-customConfigFile('six')
+customConfigFile('six') {
 }
 mavenSettingsConfigFile('seven') {
 }
@@ -1361,7 +2012,7 @@ DSL since 1.30
 ```groovy
 job {
     publishers {
-        publishJabber('one@example.org' {
+        publishJabber('one@example.org') {
             strategyName('ANY_FAILURE')
         }
         publishJabber('two@example.org') {
@@ -1698,7 +2349,6 @@ See the [API Viewer](https://jenkinsci.github.io/job-dsl-plugin/#path/job-trigge
 DSL prior to 1.26
 ```groovy
 AbstractStepContext.metaClass.myStep = { ... }
-}
 ```
 
 DSL since 1.26

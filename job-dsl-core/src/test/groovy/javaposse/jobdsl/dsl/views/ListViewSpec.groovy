@@ -8,6 +8,7 @@ import javaposse.jobdsl.dsl.views.jobfilter.BuildStatusType
 import javaposse.jobdsl.dsl.views.jobfilter.RegexMatchValue
 import javaposse.jobdsl.dsl.views.jobfilter.Status
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import static javaposse.jobdsl.dsl.views.ListView.StatusFilter.ALL
 import static javaposse.jobdsl.dsl.views.ListView.StatusFilter.DISABLED
@@ -21,7 +22,7 @@ import static org.custommonkey.xmlunit.XMLUnit.setIgnoreWhitespace
 
 class ListViewSpec<T extends ListView> extends Specification {
     JobManagement jobManagement = Mock(JobManagement)
-    T view = new ListView(jobManagement)
+    T view = new ListView(jobManagement, 'test')
 
     def 'defaults'() {
         when:
@@ -264,37 +265,6 @@ class ListViewSpec<T extends ListView> extends Specification {
         root.columns[0].value().size() == 1
         root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.ConfigureProjectColumn'
         1 * jobManagement.requirePlugin('extra-columns')
-    }
-
-    def 'last build node column with deprecated build-node-column'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('build-node-column', '0.1') >> true
-
-        when:
-        view.columns {
-            lastBuildNode()
-        }
-
-        then:
-        Node root = view.node
-        root.columns.size() == 1
-        root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'org.jenkins.plugins.column.LastBuildNodeColumn'
-        1 * jobManagement.logDeprecationWarning('support for build-node-column plugin')
-    }
-
-    def 'last build node column'() {
-        when:
-        view.columns {
-            lastBuildNode()
-        }
-
-        then:
-        Node root = view.node
-        root.columns.size() == 1
-        root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.LastBuildNodeColumn'
-        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.16')
     }
 
     def 'robotResults column'() {
@@ -577,6 +547,24 @@ class ListViewSpec<T extends ListView> extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('release', '2.5.3')
     }
 
+    def 'job filter extension'() {
+        setup:
+        jobManagement.callExtension('extension', null, JobFiltersContext) >> new Node(null, 'foo')
+
+        when:
+        view.jobFilters {
+            extension()
+        }
+
+        then:
+        def filters = view.node.jobFilters[0].value()
+        filters.size() == 1
+        with(filters[0]) {
+            name() == 'foo'
+            children().size() == 0
+        }
+    }
+
     def 'recurse folders'() {
         when:
         view.recurse()
@@ -629,46 +617,28 @@ class ListViewSpec<T extends ListView> extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('jacoco', '1.0.10')
     }
 
-    def 'slave or label column'() {
+    @Unroll
+    def '#type column'() {
         when:
         view.columns {
-            slaveOrLabel()
+            "$type"()
         }
 
         then:
         Node root = view.node
         root.columns.size() == 1
         root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.SlaveOrLabelColumn'
-        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.14')
-    }
+        root.columns[0].value()[0].name() == "jenkins.plugins.extracolumns.$xmlType"
+        1 * jobManagement.requireMinimumPluginVersion('extra-columns', minimumPluginVersion)
 
-    def 'user name column'() {
-        when:
-        view.columns {
-            userName()
-        }
-
-        then:
-        Node root = view.node
-        root.columns.size() == 1
-        root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.UserNameColumn'
-        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.16')
-    }
-
-    def 'last configuration modification column'() {
-        when:
-        view.columns {
-            lastConfigurationModification()
-        }
-
-        then:
-        Node root = view.node
-        root.columns.size() == 1
-        root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.LastJobConfigurationModificationColumn'
-        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.14')
+        where:
+        type                            | xmlType                                  | minimumPluginVersion
+        'lastBuildNode'                 | 'LastBuildNodeColumn'                    | '1.16'
+        'slaveOrLabel'                  | 'SlaveOrLabelColumn'                     | '1.14'
+        'userName'                      | 'UserNameColumn'                         | '1.16'
+        'lastConfigurationModification' | 'LastJobConfigurationModificationColumn' | '1.14'
+        'workspace'                     | 'WorkspaceColumn'                        | '1.15'
+        'scmType'                       | 'SCMTypeColumn'                          | '1.4'
     }
 
     def 'build parameters column'() {
@@ -711,20 +681,6 @@ class ListViewSpec<T extends ListView> extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.13')
     }
 
-    def 'workspace column'() {
-        when:
-        view.columns {
-            workspace()
-        }
-
-        then:
-        Node root = view.node
-        root.columns.size() == 1
-        root.columns[0].value().size() == 1
-        root.columns[0].value()[0].name() == 'jenkins.plugins.extracolumns.WorkspaceColumn'
-        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.15')
-    }
-
     def 'disable project column with button'() {
         when:
         view.columns {
@@ -761,6 +717,55 @@ class ListViewSpec<T extends ListView> extends Specification {
         column.children().size() == 1
         column.useIcon[0].value() == true
         1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.7')
+    }
+
+    def 'test result column'() {
+        when:
+        view.columns {
+            testResult(2)
+        }
+
+        then:
+        Node root = view.node
+        root.columns.size() == 1
+        def columns = root.columns[0].value()
+        columns.size() == 1
+
+        Node column = columns[0]
+        column.name() == 'jenkins.plugins.extracolumns.TestResultColumn'
+        column.children().size() == 1
+        column.testResultFormat[0].value() == 2
+        1 * jobManagement.requireMinimumPluginVersion('extra-columns', '1.6')
+    }
+
+    def 'next launch column'() {
+        when:
+        view.columns {
+            nextLaunch()
+        }
+
+        then:
+        Node root = view.node
+        root.columns.size() == 1
+        root.columns[0].value().size() == 1
+        root.columns[0].value()[0].name() == 'hudson.plugins.nextexecutions.columns.NextExecutionColumn'
+        root.columns[0].value().triggerClass[0].value() == 'hudson.triggers.TimerTrigger'
+        1 * jobManagement.requireMinimumPluginVersion('next-executions', '1.0.12')
+    }
+
+    def 'next possible launch column'() {
+        when:
+        view.columns {
+            nextPossibleLaunch()
+        }
+
+        then:
+        Node root = view.node
+        root.columns.size() == 1
+        root.columns[0].value().size() == 1
+        root.columns[0].value()[0].name() == 'hudson.plugins.nextexecutions.columns.PossibleNextExecutionColumn'
+        root.columns[0].value().triggerClass[0].value() == 'hudson.triggers.SCMTrigger'
+        1 * jobManagement.requireMinimumPluginVersion('next-executions', '1.0.12')
     }
 
     protected String getDefaultXml() {

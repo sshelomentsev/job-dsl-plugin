@@ -2,18 +2,21 @@ package javaposse.jobdsl.plugin
 
 import com.cloudbees.hudson.plugins.folder.Folder
 import com.google.common.io.Resources
+import hudson.FilePath
 import hudson.LocalPluginManager
 import hudson.model.AbstractBuild
+import hudson.model.AllView
 import hudson.model.Cause
 import hudson.model.Failure
 import hudson.model.FreeStyleBuild
 import hudson.model.FreeStyleProject
+import hudson.model.Job
 import hudson.model.ListView
+import hudson.model.Run
 import hudson.model.View
 import hudson.model.listeners.SaveableListener
 import hudson.tasks.ArtifactArchiver
 import hudson.tasks.Fingerprinter
-import hudson.util.VersionNumber
 import javaposse.jobdsl.dsl.ConfigFile
 import javaposse.jobdsl.dsl.ConfigFileType
 import javaposse.jobdsl.dsl.ConfigurationMissingException
@@ -24,6 +27,7 @@ import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.dsl.NameNotProvidedException
 import javaposse.jobdsl.dsl.UserContent
 import javaposse.jobdsl.dsl.helpers.step.StepContext
+import javaposse.jobdsl.dsl.helpers.triggers.TriggerContext
 import javaposse.jobdsl.dsl.views.ColumnsContext
 import javaposse.jobdsl.plugin.fixtures.TestContextExtensionPoint
 import javaposse.jobdsl.plugin.fixtures.TestContextExtensionPoint2
@@ -45,10 +49,24 @@ class JenkinsJobManagementSpec extends Specification {
     @Rule
     JenkinsRule jenkinsRule = new JenkinsRule()
 
-    ByteArrayOutputStream buffer = new ByteArrayOutputStream()
-    AbstractBuild build = Mock(AbstractBuild)
-    JenkinsJobManagement jobManagement = new JenkinsJobManagement(new PrintStream(buffer), [:], build)
-    JenkinsJobManagement testJobManagement = new JenkinsJobManagement(new PrintStream(buffer), [:], new File('.'))
+    ByteArrayOutputStream buffer
+    Job seedJob
+    Run build
+    JenkinsJobManagement jobManagement
+    JenkinsJobManagement testJobManagement
+
+    def setup() {
+        seedJob = Mock(Job)
+        build = Mock(Run)
+
+        build.parent >> seedJob
+
+        buffer = new ByteArrayOutputStream()
+        jobManagement = new JenkinsJobManagement(
+                new PrintStream(buffer), [:], build, new FilePath(new File('.')), LookupStrategy.JENKINS_ROOT
+        )
+        testJobManagement = new JenkinsJobManagement(new PrintStream(buffer), [:], new File('.'))
+    }
 
     @WithoutJenkins
     def 'createOrUpdateView without name'() {
@@ -99,15 +117,16 @@ class JenkinsJobManagementSpec extends Specification {
 
     def 'logPluginDeprecationWarning for plugin'() {
         when:
-        jobManagement.logPluginDeprecationWarning('ldap', '20.0')
+        jobManagement.logPluginDeprecationWarning('script-security', '20.0')
 
         then:
-        buffer.toString() =~ /Warning: \(.+, line \d+\) support for LDAP Plugin versions older than 20.0 is deprecated/
+        buffer.toString() =~
+                /Warning: \(.+, line \d+\) support for Script Security Plugin versions older than 20.0 is deprecated/
     }
 
     def 'logPluginDeprecationWarning does not log anything if plugin version is newer'() {
         when:
-        jobManagement.logPluginDeprecationWarning('ldap', '1.0')
+        jobManagement.logPluginDeprecationWarning('script-security', '1.0')
 
         then:
         buffer.size() == 0
@@ -141,7 +160,7 @@ class JenkinsJobManagementSpec extends Specification {
 
     def 'requirePlugin success'() {
         when:
-        jobManagement.requirePlugin('ldap', failIfMissing)
+        jobManagement.requirePlugin('script-security', failIfMissing)
 
         then:
         0 * build.setResult(UNSTABLE)
@@ -188,7 +207,7 @@ class JenkinsJobManagementSpec extends Specification {
 
     def 'checkMinimumPluginVersion success'() {
         when:
-        jobManagement.requireMinimumPluginVersion('ldap', '1.1', failIfMissing)
+        jobManagement.requireMinimumPluginVersion('script-security', '1.1', failIfMissing)
 
         then:
         0 * build.setResult(UNSTABLE)
@@ -290,6 +309,14 @@ class JenkinsJobManagementSpec extends Specification {
         isXmlIdentical('view-extension.xml', result)
     }
 
+    def 'call deprecated extension'() {
+        when:
+        jobManagement.callExtension('old', null, TriggerContext)
+
+        then:
+        buffer.toString() =~ /Warning: \(.+, line \d+\) old is deprecated/
+    }
+
     def 'extension is being notified'() {
         when:
         jobManagement.createOrUpdateConfig(createItem('test-123', '/config.xml'), false)
@@ -343,7 +370,7 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject seedJob = folder.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = seedJob.scheduleBuild2(0).get()
         JobManagement jobManagement = new JenkinsJobManagement(
-                new PrintStream(buffer), [:], build, LookupStrategy.SEED_JOB
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.SEED_JOB
         )
 
         when:
@@ -361,7 +388,7 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject seedJob = folder.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = seedJob.scheduleBuild2(0).get()
         JobManagement jobManagement = new JenkinsJobManagement(
-                new PrintStream(buffer), [:], build, LookupStrategy.SEED_JOB
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.SEED_JOB
         )
 
         when:
@@ -404,7 +431,7 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject project = folder.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = project.scheduleBuild2(0).get()
         JenkinsJobManagement jobManagement = new JenkinsJobManagement(
-                new PrintStream(buffer), [:], build, LookupStrategy.SEED_JOB
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.SEED_JOB
         )
 
         when:
@@ -428,7 +455,7 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject project = folder.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = project.scheduleBuild2(0).get()
         JenkinsJobManagement jobManagement = new JenkinsJobManagement(
-                new PrintStream(buffer), [:], build, LookupStrategy.SEED_JOB
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.SEED_JOB
         )
 
         when:
@@ -444,7 +471,7 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject project = folder.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = project.scheduleBuild2(0).get()
         JenkinsJobManagement jobManagement = new JenkinsJobManagement(
-                new PrintStream(buffer), [:], build, LookupStrategy.SEED_JOB
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.SEED_JOB
         )
 
         when:
@@ -501,15 +528,31 @@ class JenkinsJobManagementSpec extends Specification {
         e.message == 'Type of item "my-job" does not match existing type, item type can not be changed'
     }
 
+    def 'createOrUpdateView should fail if view type does not match'() {
+        setup:
+        jenkinsRule.jenkins.addView(new AllView('foo'))
+
+        when:
+        jobManagement.createOrUpdateView(
+                'foo',
+                JenkinsJobManagementSpec.getResourceAsStream('/javaposse/jobdsl/dsl/views/ListView-template.xml').text,
+                false
+        )
+
+        then:
+        Exception e = thrown(DslException)
+        e.message == 'Type of view "foo" does not match existing type, view type can not be changed'
+    }
+
     def isMinimumPluginVersionInstalled() {
         when:
-        boolean result = jobManagement.isMinimumPluginVersionInstalled('cvs', '0.1')
+        boolean result = jobManagement.isMinimumPluginVersionInstalled('script-security', '0.1')
 
         then:
         result
 
         when:
-        result = jobManagement.isMinimumPluginVersionInstalled('cvs', '10.0')
+        result = jobManagement.isMinimumPluginVersionInstalled('script-security', '10.0')
 
         then:
         !result
@@ -519,30 +562,6 @@ class JenkinsJobManagementSpec extends Specification {
 
         then:
         !result
-    }
-
-    def 'get plugin version'() {
-        when:
-        VersionNumber version = jobManagement.getPluginVersion('cvs')
-
-        then:
-        version != null
-    }
-
-    def 'get plugin version of unknown plugin'() {
-        when:
-        VersionNumber version = jobManagement.getPluginVersion('foo')
-
-        then:
-        version == null
-    }
-
-    def 'getJenkinsVersion returns a version'() {
-        when:
-        VersionNumber versionNumber = jobManagement.jenkinsVersion
-
-        then:
-        versionNumber != null
     }
 
     def 'get vSphere cloud hash without vSphere cloud plugin'() {
@@ -691,13 +710,13 @@ class JenkinsJobManagementSpec extends Specification {
         jobManagement.createOrUpdateView('test-view', '<hudson.model.ListView>', false)
 
         then:
-        jenkinsRule.instance.getView('test-view') == null
+        thrown(DslException)
     }
 
     def 'readFileFromWorkspace with exception'() {
         setup:
         AbstractBuild build = jenkinsRule.buildAndAssertSuccess(jenkinsRule.createFreeStyleProject())
-        jobManagement = new JenkinsJobManagement(System.out, [:], build)
+        jobManagement = new JenkinsJobManagement(System.out, [:], build, build.workspace, LookupStrategy.JENKINS_ROOT)
         String fileName = 'test.txt'
 
         when:
@@ -797,7 +816,9 @@ class JenkinsJobManagementSpec extends Specification {
         FreeStyleProject project = jenkinsRule.createProject(FreeStyleProject, 'project')
         FreeStyleProject seedJob = jenkinsRule.createProject(FreeStyleProject, 'seed')
         AbstractBuild build = seedJob.scheduleBuild2(0).get()
-        JobManagement jobManagement = new JenkinsJobManagement(new PrintStream(buffer), [:], build)
+        JobManagement jobManagement = new JenkinsJobManagement(
+                new PrintStream(buffer), [:], build, build.workspace, LookupStrategy.JENKINS_ROOT
+        )
         jenkinsRule.instance.quietPeriod = 0
 
         when:
@@ -831,6 +852,38 @@ class JenkinsJobManagementSpec extends Specification {
         project.builds.lastBuild.causes[0].shortDescription == 'Started by a Job DSL script'
     }
 
+    def 'parameters include SEED_JOB'() {
+        when:
+        Map<String, Object> parameters = jobManagement.parameters
+
+        then:
+        parameters.containsKey('SEED_JOB')
+        parameters.SEED_JOB == seedJob
+    }
+
+    def 'parameters do not include SEED_JOB for testing'() {
+        when:
+        Map<String, Object> parameters = testJobManagement.parameters
+
+        then:
+        !parameters.containsKey('SEED_JOB')
+    }
+
+    def 'create nested view JENKINS-37450'() {
+        setup:
+        jobManagement.createOrUpdateView(
+                'test', loadResource('javaposse/jobdsl/dsl/views/NestedView-template.xml'), false
+        )
+
+        when:
+        jobManagement.createOrUpdateView(
+                'test', loadResource('javaposse/jobdsl/dsl/views/NestedView-template.xml'), false
+        )
+
+        then:
+        noExceptionThrown()
+    }
+
     private static boolean isXmlIdentical(String expected, Node actual) throws Exception {
         XMLUnit.ignoreWhitespace = true
         XMLUnit.compareXML(loadResource(expected), nodeToString(actual)).identical()
@@ -847,12 +900,7 @@ class JenkinsJobManagementSpec extends Specification {
     }
 
     private Item createItem(String name, String config) {
-        new Item(jobManagement) {
-            @Override
-            String getName() {
-                name
-            }
-
+        new Item(jobManagement, name) {
             @Override
             Node getNode() {
                 new XmlParser().parse(JenkinsJobManagementSpec.getResourceAsStream(config))

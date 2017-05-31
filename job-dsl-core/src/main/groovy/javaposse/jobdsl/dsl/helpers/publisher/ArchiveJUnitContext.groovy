@@ -4,12 +4,12 @@ import javaposse.jobdsl.dsl.AbstractContext
 import javaposse.jobdsl.dsl.ContextHelper
 import javaposse.jobdsl.dsl.DslContext
 import javaposse.jobdsl.dsl.JobManagement
-import javaposse.jobdsl.dsl.RequiresPlugin
 
 class ArchiveJUnitContext extends AbstractContext {
     final TestDataPublishersContext testDataPublishersContext
     boolean allowEmptyResults
     boolean retainLongStdout
+    double healthScaleFactor = 1.0
 
     ArchiveJUnitContext(JobManagement jobManagement) {
         super(jobManagement)
@@ -21,7 +21,6 @@ class ArchiveJUnitContext extends AbstractContext {
      *
      * @since 1.43
      */
-    @RequiresPlugin(id = 'junit', minimumVersion = '1.10')
     void allowEmptyResults(boolean allow = true) {
         allowEmptyResults = allow
     }
@@ -32,6 +31,16 @@ class ArchiveJUnitContext extends AbstractContext {
      */
     void retainLongStdout(boolean retain = true) {
         retainLongStdout = retain
+    }
+
+    /**
+     * Sets the amplification factor to apply to test failures when computing the test result contribution to the
+     * build health score. The default factor is {@code 1.0}.
+     *
+     * @since 1.52
+     */
+    void healthScaleFactor(double factor) {
+        healthScaleFactor = factor
     }
 
     /**

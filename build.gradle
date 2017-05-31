@@ -10,6 +10,11 @@ buildscript {
     }
 }
 
+plugins {
+    // need to be in the root project as workaround for https://github.com/michel-kraemer/gradle-download-task/issues/48
+    id 'de.undercouch.download' version '3.1.2'
+}
+
 defaultTasks 'build' // for BuildHive
 
 configure(subprojects - project(':job-dsl-api-viewer')) {
@@ -19,30 +24,24 @@ configure(subprojects - project(':job-dsl-api-viewer')) {
     apply plugin: 'maven' // for publishing
     apply plugin: 'codenarc'
 
-    sourceCompatibility = 1.6
-    targetCompatibility = 1.6
+    sourceCompatibility = 1.7
+    targetCompatibility = 1.7
 
     dependencies {
         compile "org.codehaus.groovy:groovy-all:${groovyVersion}"
-        testCompile 'org.spockframework:spock-core:0.7-groovy-1.8'
-        testCompile 'junit:junit-dep:4.10'
-        testCompile 'cglib:cglib-nodep:2.2.2' // used by Spock
-        testCompile 'org.objenesis:objenesis:1.2' // used by Spock
+        testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+        testCompile 'junit:junit:4.12'
+        testCompile 'cglib:cglib-nodep:3.2.5' // used by Spock
+        testCompile 'org.objenesis:objenesis:2.5.1' // used by Spock
     }
 
     codenarc {
-        toolVersion = '0.25.2'
+        toolVersion = '0.26.0'
         configFile = file('../config/codenarc/rules.groovy')
     }
 
     codenarcTest {
         configFile = file('../config/codenarc/rules-test.groovy')
-    }
-
-    if (JavaVersion.current().isJava8Compatible()) {
-        tasks.withType(Javadoc) {
-            options.addStringOption('Xdoclint:none', '-quiet')
-        }
     }
 }
 
@@ -50,7 +49,7 @@ project(':job-dsl-core') {
     repositories {
         jcenter()
         maven {
-            url('https://repo.jenkins-ci.org/releases/')
+            url('https://repo.jenkins-ci.org/public/')
         }
     }
 
@@ -87,8 +86,10 @@ project(':job-dsl-core') {
         astCompile "org.codehaus.groovy:groovy-all:${groovyVersion}"
         compile 'commons-codec:commons-codec:1.8' // for Perforce
         compile 'xmlunit:xmlunit:1.4' // for runtime use, not just for testing
-        compile 'org.jenkins-ci:version-number:1.1'
-        compile 'org.jvnet.hudson:xstream:1.4.7-jenkins-1'
+        compile('org.jvnet.hudson:xstream:1.4.7-jenkins-1') {
+            exclude group: 'xmlpull'
+            exclude group: 'xpp3'
+        }
         compile 'org.yaml:snakeyaml:1.17'
     }
 
@@ -212,7 +213,9 @@ githubPages {
     workingPath = "$buildDir/wiki"
     pages {
         from 'docs'
-        filter(ReplaceTokens, tokens: [version: version, jenkinsVersion: jenkinsVersion])
+        filesMatching('*.md') {
+            filter(ReplaceTokens, tokens: [version: version, jenkinsVersion: jenkinsVersion])
+        }
     }
 }
 

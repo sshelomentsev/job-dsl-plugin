@@ -13,6 +13,12 @@ If you already have the source code checked out then you can ignore step 1.
 
 What's going on here is that there's a static main method that can run the DSL, you just have to give it a filename. It'll output all the jobs' XML to the current directory. Likewise, if you use "using" (the templates-like feature) it'll look in the current directory for a file with the name of the job appended with ".xml" at the end of it.
 
+By default the current directory is added to the classpath to be able to import classes. When using sub-directories for
+scripts, the classpath differs compared to running in Jenkins where the DSL script's directory is added to the
+classpath. Add the `-j` command line option to use the same behavior as when running in Jenkins:
+
+    java -jar $DSL_JAR -j sample.dsl.groovy
+
 # Generate a Job config.xml without having to fire up Jenkins
 1. Add some job dsl content to a file, say job.dsl
 1. Run the gradle command:  ./gradlew run -Pargs=job.dsl
@@ -168,3 +174,64 @@ But note, this will only work if the BuildFlow project type uses the same sub-el
 # Use DSL scripts in a Gradle project
 
 Gradle provides a way to build and test your scripts and supporting classes. See [job-dsl-gradle-example](https://github.com/sheehan/job-dsl-gradle-example) for an example.
+
+# Use Job DSL in Pipeline scripts
+
+Starting with version 1.48, the Job DSL build step can be used in
+[Pipeline](https://github.com/jenkinsci/pipeline-plugin) scripts (e.g. in `Jenkinsfile`). In version 1.49 Pipeline
+support has been improved by enabling a more concise syntax when using _Pipeline: Groovy_ 2.10 or later.
+
+Pipeline syntax with version 1.49 and _Pipeline: Groovy_ 2.10 or later:
+
+```groovy
+node {
+    jobDsl scriptText: 'job("example-2")'
+
+    jobDsl targets: ['jobs/projectA/*.groovy', 'jobs/common.groovy'].join('\n'),
+           removedJobAction: 'DELETE',
+           removedViewAction: 'DELETE',
+           lookupStrategy: 'SEED_JOB',
+           additionalClasspath: ['libA.jar', 'libB.jar'].join('\n')
+}
+```
+
+Pipeline syntax with version 1.48 or _Pipeline: Groovy_ 2.9 and older:
+
+```groovy
+node {
+    step([
+        $class: 'ExecuteDslScripts',
+        scriptText: 'job("example-2")'
+    ])
+    step([
+        $class: 'ExecuteDslScripts',
+        targets: ['jobs/projectA/*.groovy', 'jobs/common.groovy'].join('\n'),
+        removedJobAction: 'DELETE',
+        removedViewAction: 'DELETE',
+        lookupStrategy: 'SEED_JOB',
+        additionalClasspath: ['libA.jar', 'libB.jar'].join('\n')
+    ])
+}
+```
+
+Options:
+* `targets`: optional, specifies Job DSL script files to execute, newline separated list of file names relative
+             to the workspace
+* `scriptText`: optional, specifies an inline Job DSL script
+* `ignoreMissingFiles`: optional, defaults to `false`, set to `true` to ignore missing files or empty wildcards in
+                        `targets`
+* `ignoreExisting`: optional, defaults to `false`, set to `true` to not update existing jobs and views
+* `removedJobAction`: optional, set to `'DELETE'` or `'DISABLE'` to delete or disable jobs that have been removed from
+                      DSL scripts, defaults to `'IGNORE'`
+* `removedViewAction`: optional, set to `'DELETE'` to delete views that have been removed from Job DSL scripts, defaults
+                       to `'IGNORE'`
+* `removedConfigFilesAction`: optional, set to `'DELETE'` to delete config files that have been removed from Job DSL
+                              scripts, defaults to `'IGNORE'`
+* `lookupStrategy`: optional, when set to `'SEED_JOB'` job names will be interpreted as relative to the pipeline job,
+                    defaults to `'JENKINS_ROOT` which will treat all job names as absolute
+* `additionalClasspath`: optional, newline separated list of additional classpath entries for Job DSL scripts, file
+                         names must be relative to the workspace; this option will be ignored when script security for
+                         Job DSL is enabled on the "Configure Global Security" page
+* `sandbox`: optional, defaults to `false`, if `false` the DSL script needs to be approved by an administrator; set to
+             `true` to run the DSL scripts in a sandbox with limited abilities (see [[Script Security]]); this option
+              will be ignored when script security for Job DSL is disabled on the "Configure Global Security" page

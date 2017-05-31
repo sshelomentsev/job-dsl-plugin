@@ -21,6 +21,7 @@ Marionette.Renderer.render = function(template, data) {
 
             this.dslLoader = new App.DslLoader();
             this.settings = new App.Settings();
+            this.settings.on('change', this.highlightFilter, this);
 
             this.router = new App.Router();
             this.router.on('route:home',    this.showHome, this);
@@ -30,9 +31,9 @@ Marionette.Renderer.render = function(template, data) {
 
             this.initLayout();
             $('.loading-outer').addClass('loading');
-            this.loadSelectedDsl().then(function() {
+            this.loadConfig().then(this.loadUpdateCenter.bind(this)).then(this.loadSelectedDsl.bind(this)).then(function() {
                 Backbone.history.start({pushState: false});
-                if (!this.dsl.isEmbedded()) {
+                if (!this.config.embedded) {
                     $('.version-select').show()
                 }
             }.bind(this));
@@ -56,6 +57,8 @@ Marionette.Renderer.render = function(template, data) {
                 $('.search-input').val('');
                 this.onSearch();
             }.bind(this));
+
+            this.highlightFilter();
         },
 
         showPlugin: function(name) {
@@ -69,9 +72,25 @@ Marionette.Renderer.render = function(template, data) {
             this.detailRegion.show(pluginDetailView);
         },
 
+        loadConfig: function() {
+            var url = 'config.json';
+            return $.get(url).then(function (data) {
+              this.config = data;
+              return data;
+            }.bind(this));
+        },
+
+        loadUpdateCenter: function() {
+            var url = this.config.embedded ? '../../../job-dsl-api-viewer/plugins' : 'build/data/update-center.json';
+            return $.get(url).then(function (data) {
+                window.updateCenter = {data: data};
+                return data;
+            }.bind(this));
+        },
+
         loadSelectedDsl: function() {
-            var url = $('.version-select').val();
-            return this.dslLoader.fetch(url).then(this.onDslFetchComplete.bind(this));
+            var url = this.config.embedded ? '../../../job-dsl-api-viewer/data' : $('.version-select').val();
+            return this.dslLoader.fetch(url).then(this.onDslFetchComplete.bind(this), this.onDslFetchFailure.bind(this));
         },
 
         onDslFetchComplete: function(dsl) {
@@ -94,6 +113,10 @@ Marionette.Renderer.render = function(template, data) {
             });
             allItems = _.sortBy(allItems, function(item) { return item.name.toLowerCase(); });
             this.allItems = allItems;
+        },
+
+        onDslFetchFailure: function(dsl) {
+            $('.loading-inner').html('Error while loading data, see Jenkins logs for details.');
         },
 
         initPluginList: function() {
@@ -131,7 +154,7 @@ Marionette.Renderer.render = function(template, data) {
 
                 var matches = this.allItems.filter(function(item) {
                     return item.name.toLowerCase().indexOf(val.toLowerCase()) !== -1 &&
-                        (!item.method.plugin || !this.settings.isPluginExcluded(item.method.plugin.name));
+                        !this.settings.isPluginsExcluded(item.method.plugins);
                 }, this);
                 var html = Handlebars.templates['searchResults']({results: matches});
                 $searchResults.html(html);
@@ -217,7 +240,7 @@ Marionette.Renderer.render = function(template, data) {
             var signatures = this.dsl.getContextSignatures(parentSignature.contextClass, path);
 
             signatures = _.filter(signatures, function(sig) {
-                return !sig.methodPlugin || !this.settings.isPluginExcluded(sig.methodPlugin.name);
+                return !this.settings.isPluginsExcluded(sig.methodPlugins);
             }, this);
 
             var contextView = new App.ContextView({signatures: signatures});
@@ -234,6 +257,14 @@ Marionette.Renderer.render = function(template, data) {
                 hljs.highlightBlock(block);
                 $(block).removeClass('ruby'); // TODO hljs bug?
             });
+        },
+
+        highlightFilter: function () {
+            if (this.settings.isPluginExcluded()) {
+                $('.filter-active').removeClass('invisible')
+            } else {
+                $('.filter-active').addClass('invisible')
+            }
         }
     });
 

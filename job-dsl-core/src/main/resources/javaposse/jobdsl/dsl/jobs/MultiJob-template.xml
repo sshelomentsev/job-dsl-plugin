@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<com.tikal.jenkins.plugins.multijob.MultiJobProject plugin="jenkins-multijob-plugin@1.8">
+<com.tikal.jenkins.plugins.multijob.MultiJobProject>
     <actions/>
     <description/>
     <keepDependencies>false</keepDependencies>
@@ -9,7 +9,7 @@
     <disabled>false</disabled>
     <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
     <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
-    <triggers class="vector"/>
+    <triggers/>
     <concurrentBuild>false</concurrentBuild>
     <builders/>
     <publishers/>

@@ -1,12 +1,13 @@
 package javaposse.jobdsl.dsl
 
 abstract class Item extends AbstractContext {
-    String name
+    final String name
 
     private final List<Closure> configureBlocks = []
 
-    protected Item(JobManagement jobManagement) {
+    protected Item(JobManagement jobManagement, String name) {
         super(jobManagement)
+        this.name = name
     }
 
     /**
@@ -48,10 +49,5 @@ abstract class Item extends AbstractContext {
 
     protected Node getNodeTemplate() {
         new XmlParser().parse(this.class.getResourceAsStream("${this.class.simpleName}-template.xml"))
-    }
-
-    @Deprecated
-    void executeWithXmlActions(Node root) {
-        ContextHelper.executeConfigureBlocks(root, configureBlocks)
     }
 }

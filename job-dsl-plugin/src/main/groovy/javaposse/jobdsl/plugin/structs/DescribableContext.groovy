@@ -3,6 +3,8 @@ package javaposse.jobdsl.plugin.structs
 import javaposse.jobdsl.dsl.Context
 import javaposse.jobdsl.dsl.DslException
 import javaposse.jobdsl.dsl.DslScriptException
+import javaposse.jobdsl.dsl.JobManagement
+import org.apache.commons.lang.ClassUtils
 import org.jenkinsci.plugins.structs.describable.ArrayType
 import org.jenkinsci.plugins.structs.describable.AtomicType
 import org.jenkinsci.plugins.structs.describable.DescribableModel
@@ -13,7 +15,6 @@ import org.jenkinsci.plugins.structs.describable.HomogeneousObjectType
 import org.jenkinsci.plugins.structs.describable.ParameterType
 
 import static javaposse.jobdsl.dsl.ContextHelper.executeInContext
-import static org.apache.commons.lang.ClassUtils.isAssignable
 
 /**
  * A dynamic {@link Context} that can be used to extend the DSL for any {@link hudson.model.Describable}.
@@ -22,10 +23,12 @@ import static org.apache.commons.lang.ClassUtils.isAssignable
  */
 class DescribableContext implements Context {
     private final DescribableModel describableModel
+    private final JobManagement jobManagement
     private final Map<String, ?> values = [:]
 
-    DescribableContext(DescribableModel describableModel) {
+    DescribableContext(DescribableModel describableModel, JobManagement jobManagement) {
         this.describableModel = describableModel
+        this.jobManagement = jobManagement
     }
 
     /**
@@ -56,6 +59,9 @@ class DescribableContext implements Context {
                 throw new ParameterMissingException(name, DescribableContext, argsArray, describableModel)
             }
             if (isValidValue(parameter.type, value)) {
+                if (parameter.deprecated) {
+                    jobManagement.logDeprecationWarning(name)
+                }
                 values[name] = getValue(parameter.type, value)
                 return null
             }
@@ -71,17 +77,18 @@ class DescribableContext implements Context {
                         arrayType.elementType instanceof HomogeneousObjectType
             } else if (value instanceof Iterable || (value != null && value.class.array)) {
                 if (arrayType.elementType instanceof AtomicType) {
-                    return value.every { isAssignable(it.class, ((AtomicType) arrayType.elementType).type, true) }
+                    return value.every { isAssignable(it, (AtomicType) arrayType.elementType) }
                 } else if (arrayType.elementType instanceof EnumType) {
                     EnumType enumType = (EnumType) arrayType.elementType
-                    return value.every { enumType.type.isInstance(it) || enumType.values.contains(it) }
+                    value.each { checkValidEnumValue(enumType, it) }
+                    return true
                 }
             }
         } else if (parameterType instanceof EnumType) {
-            EnumType enumType = (EnumType) parameterType
-            return enumType.type.isInstance(value) || enumType.values.contains(value)
+            checkValidEnumValue((EnumType) parameterType, value)
+            return true
         } else if (parameterType instanceof AtomicType) {
-            return (value != null && isAssignable(value.class, ((AtomicType) parameterType).type, true)) ||
+            return (value != null && isAssignable(value, parameterType)) ||
                     (value == null && !((AtomicType) parameterType).type.primitive)
         } else if (parameterType instanceof HomogeneousObjectType) {
             return value instanceof Closure || value == null
@@ -91,20 +98,27 @@ class DescribableContext implements Context {
         false
     }
 
-    private static Object getValue(ParameterType parameterType, Object value) {
+    private Object getValue(ParameterType parameterType, Object value) {
         if (value instanceof Closure) {
             if (parameterType instanceof ArrayType) {
-                ArrayType arrayType = (ArrayType) parameterType
-                DescribableListContext delegate = new DescribableListContext(getArrayElementTypes(arrayType))
+                DescribableListContext delegate = new DescribableListContext(
+                        getArrayElementTypes((ArrayType) parameterType),
+                        jobManagement
+                )
                 executeInContext(value, delegate)
                 return delegate.values
             } else if (parameterType instanceof HomogeneousObjectType) {
-                DescribableContext delegate = new DescribableContext(((HomogeneousObjectType) parameterType).schemaType)
+                DescribableContext delegate = new DescribableContext(
+                        ((HomogeneousObjectType) parameterType).schemaType,
+                        jobManagement
+                )
                 executeInContext((Closure) value, delegate)
                 return delegate.createInstance()
             } else if (parameterType instanceof HeterogeneousObjectType) {
-                HeterogeneousObjectType heterogeneousObjectType = (HeterogeneousObjectType) parameterType
-                DescribableListContext delegate = new DescribableListContext(heterogeneousObjectType.types.values())
+                DescribableListContext delegate = new DescribableListContext(
+                        ((HeterogeneousObjectType) parameterType).types.values(),
+                        jobManagement
+                )
                 executeInContext(value, delegate)
                 return delegate.values ? delegate.values[-1] : null
             }
@@ -119,5 +133,18 @@ class DescribableContext implements Context {
             return [((HomogeneousObjectType) arrayType.elementType).schemaType]
         }
         throw new DslException("unsupported array element type: $arrayType.elementType")
+    }
+
+    private static boolean isAssignable(Object value, AtomicType parameterType) {
+        Class normalizedType = value instanceof GString ? String : value.class
+        ClassUtils.isAssignable(normalizedType, parameterType.type, true)
+    }
+
+    private static void checkValidEnumValue(EnumType enumType, Object value) {
+        if (!enumType.type.isInstance(value) && !enumType.values.contains(value)) {
+            throw new DslScriptException(
+                    "invalid enum value '${value}', must be one of '${enumType.values.join("', '")}'"
+            )
+        }
     }
 }

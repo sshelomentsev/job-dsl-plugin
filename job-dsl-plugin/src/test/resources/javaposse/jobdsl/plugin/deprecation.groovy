@@ -1,6 +1,1 @@
-multiJob('a') {
-    publishers {
-        mergePullRequest {
-        }
-    }
-}
+jm.logPluginDeprecationWarning('matrix-auth', '2.0')

@@ -39,7 +39,6 @@ class EmbeddedApiDocGenerator {
 
     String generateApi() throws Exception {
         JSONObject api = JSONObject.fromObject(Context.getResource('dsl.json').getText('UTF-8'))
-        api.element('embedded', true)
 
         JSONObject contexts = api.getJSONObject('contexts')
         contexts.values().each { JSONObject context -> generateExtensionMethods(context) }
@@ -92,11 +91,41 @@ class EmbeddedApiDocGenerator {
             }
             knownMethods.addAll(extensions*.name)
 
+            methods.each { JSONObject method ->
+                if (!hasOptionalClosureSignature(method)) {
+                    knownMethods.remove(method.getString('name'))
+                }
+            }
+
             Map<String, DescribableModel> symbols = findDescribableModels(extensibleContextClass, knownMethods)
             symbols.sort().each { String symbol, DescribableModel model ->
-                methods << generateMethod(symbol, model)
+                JSONObject method = methods.find { it.getString('name') == symbol } as JSONObject
+                if (method) {
+                    method.getJSONArray('signatures').add(generateSignature(model))
+                } else {
+                    methods << generateMethod(symbol, model)
+                }
             }
         }
+    }
+
+    private static boolean hasOptionalClosureSignature(JSONObject method) {
+        method.getJSONArray('signatures').any { JSONObject signature ->
+            isOptionalClosureSignature(signature)
+        }
+    }
+
+    private static boolean isOptionalClosureSignature(JSONObject signature) {
+        if (!signature.has('parameters')) {
+            return true
+        }
+        JSONArray parameters = signature.getJSONArray('parameters')
+        if (parameters.size() > 1) {
+            return false
+        } else if (parameters.empty) {
+            return true
+        }
+        parameters[0].getString('type') == 'Closure'
     }
 
     /**
@@ -157,6 +186,9 @@ class EmbeddedApiDocGenerator {
                 .element('parameters', model.parameters ? [generateOptionalClosureParameter()] : [])
                 .element('generated', true)
 
+        if (model.deprecated) {
+            signature.element('deprecated', true)
+        }
         if (model.parameters) {
             signature.element('contextClass', getContextClassName(model))
             addContext(model)
@@ -214,6 +246,7 @@ class EmbeddedApiDocGenerator {
     private JSONObject generateSignature(DescribableParameter parameter) {
         JSONObject signature = new JSONObject()
                 .element('parameters', [generateParameter(parameter.type)])
+                .element('deprecated', parameter.deprecated)
                 .element('generated', true)
 
         if (isContextParameter(parameter.type)) {
@@ -248,7 +281,7 @@ class EmbeddedApiDocGenerator {
         if (parameterType instanceof AtomicType) {
             return JSONObject.fromObject([name: 'value', type: ((AtomicType) parameterType).type.simpleName])
         } else if (parameterType instanceof EnumType) {
-            return JSONObject.fromObject([name: 'value', type: 'String'])
+            return JSONObject.fromObject([name: 'value', type: 'String', enumConstants: parameterType.values])
         } else if (parameterType instanceof HomogeneousObjectType || parameterType instanceof HeterogeneousObjectType) {
             return generateOptionalClosureParameter()
         } else if (parameterType instanceof ArrayType) {
@@ -324,8 +357,14 @@ class EmbeddedApiDocGenerator {
 
     private static void generateHelp(JSONObject object, String text) {
         if (text) {
-            String normalizedText = text.replaceAll(/\r?\n/, '\n')
-            object.element('html', normalizedText).element('firstSentenceCommentText', firstSentence(normalizedText))
+            String normalizedText = text.replaceAll(/\r?\n/, '\n').trim()
+            if (normalizedText) {
+                object.element('html', normalizedText)
+                String firstSentence = firstSentence(normalizedText)
+                if (firstSentence) {
+                    object.element('firstSentenceCommentText', firstSentence)
+                }
+            }
         }
     }
 
@@ -337,6 +376,10 @@ class EmbeddedApiDocGenerator {
         cleanText = cleanText.replaceAll(/<.*?>/, '')
         // unescape HTML and remove leading/trailing spaces
         cleanText = unescapeHtml(cleanText).trim()
+
+        if (cleanText.empty) {
+            return ''
+        }
 
         BreakIterator iterator = BreakIterator.sentenceInstance
         iterator.text = new StringCharacterIterator(cleanText)

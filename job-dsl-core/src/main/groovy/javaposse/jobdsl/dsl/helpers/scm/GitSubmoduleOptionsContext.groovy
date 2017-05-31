@@ -10,6 +10,7 @@ class GitSubmoduleOptionsContext extends AbstractContext {
     boolean tracking
     String reference
     Integer timeout
+    boolean parentCredentials
 
     protected GitSubmoduleOptionsContext(JobManagement jobManagement) {
         super(jobManagement)
@@ -41,7 +42,6 @@ class GitSubmoduleOptionsContext extends AbstractContext {
      *
      * @since 1.46
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.4.1')
     void reference(String reference) {
         this.reference = reference
     }
@@ -51,8 +51,17 @@ class GitSubmoduleOptionsContext extends AbstractContext {
      *
      * @since 1.46
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.8')
     void timeout(Integer timeout) {
         this.timeout = timeout
+    }
+
+    /**
+     * Allows to use credentials from the default remote of the parent project.
+     *
+     * @since 1.54
+     */
+    @RequiresPlugin(id = 'git', minimumVersion = '3.0.0')
+    void parentCredentials(boolean parentCredentials = true) {
+        this.parentCredentials = parentCredentials
     }
 }

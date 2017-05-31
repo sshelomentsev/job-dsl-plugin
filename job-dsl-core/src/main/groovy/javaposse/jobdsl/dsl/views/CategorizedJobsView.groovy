@@ -6,8 +6,8 @@ import javaposse.jobdsl.dsl.JobManagement
 import static javaposse.jobdsl.dsl.ContextHelper.executeInContext
 
 class CategorizedJobsView extends ListView {
-    CategorizedJobsView(JobManagement jobManagement) {
-        super(jobManagement)
+    CategorizedJobsView(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     /**

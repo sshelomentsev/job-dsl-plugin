@@ -18,10 +18,16 @@ import javaposse.jobdsl.plugin.actions.GeneratedJobsBuildAction;
 import javaposse.jobdsl.plugin.actions.GeneratedViewsBuildAction;
 import jenkins.YesNoMaybe;
 import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
+import org.jenkinsci.Symbol;
+import org.kohsuke.stapler.StaplerRequest;
 
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
 import java.util.Map;
 
 @Extension(dynamicLoadable = YesNoMaybe.YES)
+@Symbol("jobDsl")
 public class DescriptorImpl extends BuildStepDescriptor<Builder> {
     private Multimap<String, SeedReference> templateJobMap; // K=templateName, V=Seed
     private Map<String, SeedReference> generatedJobMap;
@@ -71,6 +77,17 @@ public class DescriptorImpl extends BuildStepDescriptor<Builder> {
         return items;
     }
 
+    /**
+     * @since 1.62
+     */
+    public ListBoxModel doFillRemovedConfigFilesActionItems() {
+        ListBoxModel items = new ListBoxModel();
+        for (RemovedConfigFilesAction action : RemovedConfigFilesAction.values()) {
+            items.add(action.getDisplayName(), action.name());
+        }
+        return items;
+    }
+
     public ListBoxModel doFillLookupStrategyItems() {
         ListBoxModel items = new ListBoxModel();
         for (LookupStrategy item : LookupStrategy.values()) {
@@ -80,8 +97,19 @@ public class DescriptorImpl extends BuildStepDescriptor<Builder> {
     }
 
     @Override
+    public Builder newInstance(@CheckForNull StaplerRequest req, @Nonnull JSONObject formData) throws FormException {
+        ExecuteDslScripts builder = (ExecuteDslScripts) super.newInstance(req, formData);
+        builder.configure(req.findAncestorObject(Item.class));
+        return builder;
+    }
+
+    @Override
     public boolean isApplicable(Class<? extends AbstractProject> jobType) {
         return true;
+    }
+
+    public String getScriptApprovalWarning() {
+        return isSecurityEnabled() && !Jenkins.getInstance().hasPermission(Jenkins.RUN_SCRIPTS) ? Messages.ScriptSecurity_ScriptApprovalWarning() : "";
     }
 
     @Initializer(before = InitMilestone.PLUGINS_STARTED)
@@ -95,6 +123,11 @@ public class DescriptorImpl extends BuildStepDescriptor<Builder> {
         Run.XSTREAM2.addCompatibilityAlias(
                 "javaposse.jobdsl.plugin.GeneratedViewsBuildAction", GeneratedViewsBuildAction.class
         );
+    }
+
+    public boolean isSecurityEnabled() {
+        Jenkins jenkins = Jenkins.getInstance();
+        return jenkins.isUseSecurity() && jenkins.getDescriptorByType(GlobalJobDslSecurityConfiguration.class).isUseScriptSecurity();
     }
 
     private static void removeSeedReference(String key) {

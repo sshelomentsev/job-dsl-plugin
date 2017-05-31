@@ -160,32 +160,6 @@ class TriggerContext extends ItemTriggerContext {
     }
 
     /**
-     * Allows to schedule a build on Jenkins after a job execution on RunDeck.
-     *
-     * @since 1.33
-     */
-    @RequiresPlugin(id = 'rundeck', minimumVersion = '3.4')
-    void rundeck(@DslContext(RundeckTriggerContext) Closure closure = null) {
-        RundeckTriggerContext context = new RundeckTriggerContext()
-        ContextHelper.executeInContext(closure, context)
-
-        triggerNodes << new NodeBuilder().'org.jenkinsci.plugins.rundeck.RundeckTrigger' {
-            spec()
-            filterJobs(context.filterJobs)
-            jobsIdentifiers {
-                context.jobIdentifiers.each { String jobsIdentifier ->
-                    string(jobsIdentifier)
-                }
-            }
-            executionStatuses {
-                context.executionStatuses.each { String status ->
-                    string(status)
-                }
-            }
-        }
-    }
-
-    /**
      * Trigger that runs jobs on push notifications from Bitbucket.
      *
      * @since 1.41
@@ -202,9 +176,9 @@ class TriggerContext extends ItemTriggerContext {
      *
      * @since 1.42
      */
-    @RequiresPlugin(id = 'gitlab-plugin', minimumVersion = '1.1.28')
+    @RequiresPlugin(id = 'gitlab-plugin', minimumVersion = '1.2.0')
     void gitlabPush(@DslContext(GitLabTriggerContext) Closure closure) {
-        jobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
+        jobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
 
         GitLabTriggerContext context = new GitLabTriggerContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
@@ -222,11 +196,12 @@ class TriggerContext extends ItemTriggerContext {
             includeBranchesSpec(context.includeBranches ?: '')
             excludeBranchesSpec(context.excludeBranches ?: '')
             acceptMergeRequestOnSuccess(context.acceptMergeRequestOnSuccess)
-            if (jobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.0')) {
-                branchFilterType(context.branchFilterType)
-                targetBranchRegex(context.targetBranchRegex ?: '')
-            } else {
-                allowAllBranches(context.allowAllBranches)
+            branchFilterType(context.branchFilterType)
+            targetBranchRegex(context.targetBranchRegex ?: '')
+            if (jobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.4')) {
+                triggerOnNoteRequest(context.noteRegex as boolean)
+                noteRegex(context.noteRegex ?: '')
+                skipWorkInProgressMergeRequest(context.skipWorkInProgressMergeRequest)
             }
         }
     }

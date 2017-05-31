@@ -87,6 +87,8 @@ class WrapperContextSpec extends Specification {
             ruby__build__revision[0].'@ruby-class' == 'String'
         }
         1 * mockJobManagement.requirePlugin('rbenv')
+        1 * mockJobManagement.requireMinimumPluginVersion('ruby-runtime', '0.12')
+        1 * mockJobManagement.logPluginDeprecationWarning('rbenv', '0.0.17')
     }
 
     def 'add rbenv-controlled override defaults'() {
@@ -114,6 +116,8 @@ class WrapperContextSpec extends Specification {
             ruby__build__revision[0].value() == '1.0'
         }
         1 * mockJobManagement.requirePlugin('rbenv')
+        1 * mockJobManagement.requireMinimumPluginVersion('ruby-runtime', '0.12')
+        1 * mockJobManagement.logPluginDeprecationWarning('rbenv', '0.0.17')
     }
 
     def 'add rvm-controlled ruby version'() {
@@ -123,7 +127,9 @@ class WrapperContextSpec extends Specification {
         then:
         context.wrapperNodes[0].name() == 'ruby-proxy-object'
         context.wrapperNodes[0].'ruby-object'[0].object[0].impl[0].value() == 'ruby-1.9.3'
-        1 * mockJobManagement.requirePlugin('rvm')
+        context.wrapperNodes[0].'ruby-object'[0].attribute('ruby-class') == 'Jenkins::Tasks::BuildWrapperProxy'
+        1 * mockJobManagement.requireMinimumPluginVersion('rvm', '0.6')
+        1 * mockJobManagement.requireMinimumPluginVersion('ruby-runtime', '0.12')
     }
 
     def 'default timeout works'() {
@@ -153,6 +159,23 @@ class WrapperContextSpec extends Specification {
             strategy[0].children().size() == 1
             strategy[0].@class == 'hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy'
             strategy[0].timeoutMinutes[0].value() == 5
+            operationList[0].children().size() == 0
+        }
+        1 * mockJobManagement.requireMinimumPluginVersion('build-timeout', '1.12')
+    }
+
+    def 'absolute timeout configuration working using string type'() {
+        when:
+        context.timeout {
+            absolute('${TEST_JOB_TIMEOUT}')
+        }
+
+        then:
+        with(context.wrapperNodes[0]) {
+            children().size() == 2
+            strategy[0].children().size() == 1
+            strategy[0].@class == 'hudson.plugins.build_timeout.impl.AbsoluteTimeOutStrategy'
+            strategy[0].timeoutMinutes[0].value() == '${TEST_JOB_TIMEOUT}'
             operationList[0].children().size() == 0
         }
         1 * mockJobManagement.requireMinimumPluginVersion('build-timeout', '1.12')
@@ -295,7 +318,13 @@ class WrapperContextSpec extends Specification {
 
     def 'sshAgent without credentials'() {
         when:
-        context.sshAgent(null)
+        context.sshAgent((String) null)
+
+        then:
+        thrown(DslScriptException)
+
+        when:
+        context.sshAgent((String[]) null)
 
         then:
         thrown(DslScriptException)
@@ -309,6 +338,20 @@ class WrapperContextSpec extends Specification {
         context.wrapperNodes[0].name() == 'com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper'
         context.wrapperNodes[0].user[0].value() == 'acme'
         1 * mockJobManagement.requirePlugin('ssh-agent')
+        1 * mockJobManagement.logPluginDeprecationWarning('ssh-agent', '1.5')
+    }
+
+    def 'sshAgent with multiple credentials'() {
+        when:
+        context.sshAgent('acme', 'foo')
+
+        then:
+        context.wrapperNodes[0].name() == 'com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper'
+        context.wrapperNodes[0].children().size() == 1
+        context.wrapperNodes[0].credentialIds[0].children().size() == 2
+        context.wrapperNodes[0].credentialIds[0].string[0].value() == 'acme'
+        context.wrapperNodes[0].credentialIds[0].string[1].value() == 'foo'
+        1 * mockJobManagement.requireMinimumPluginVersion('ssh-agent', '1.5')
     }
 
     def 'ansiColor with map'() {
@@ -473,97 +516,136 @@ class WrapperContextSpec extends Specification {
         1 * mockJobManagement.requirePlugin('envinject')
     }
 
-    def 'release plugin simple'() {
+    def 'release plugin without options'() {
         when:
         context.release {
+        }
+
+        then:
+        with(context.wrapperNodes[0]) {
+            name() == 'hudson.plugins.release.ReleaseWrapper'
+            children().size() == 8
+            releaseVersionTemplate[0].value() == ''
+            doNotKeepLog[0].value() == false
+            overrideBuildParameters[0].value() == false
+            parameterDefinitions[0].children().size() == 0
+            preBuildSteps[0].children().size() == 0
+            postBuildSteps[0].children().size() == 0
+            postSuccessfulBuildSteps[0].children().size() == 0
+            postFailedBuildSteps[0].children().size() == 0
+        }
+        1 * mockJobManagement.requirePlugin('release')
+    }
+
+    def 'release plugin with all options'() {
+        when:
+        context.release {
+            releaseVersionTemplate('templatename')
+            doNotKeepLog()
+            overrideBuildParameters()
             parameters {
-                textParam('p1', 'p1', 'd1')
+                booleanParam('myBooleanParam', true)
+                booleanParam('my2ndBooleanParam', true)
             }
             preBuildSteps {
                 shell('echo hello;')
             }
-        }
-
-        then:
-        context.wrapperNodes[0].name() == 'hudson.plugins.release.ReleaseWrapper'
-        def wrapper = context.wrapperNodes[0]
-        wrapper.'parameterDefinitions'.'hudson.model.TextParameterDefinition'[0].value()[0].value() == 'p1'
-        wrapper.'preBuildSteps'[0].value()[0].name() == 'hudson.tasks.Shell'
-        wrapper.'preBuildSteps'[0].value()[0].value()[0].name() == 'command'
-        wrapper.'preBuildSteps'[0].value()[0].value()[0].value() == 'echo hello;'
-        1 * mockJobManagement.requirePlugin('release')
-    }
-
-    def 'release plugin extended'() {
-        when:
-        context.release {
-            releaseVersionTemplate('templatename')
-            doNotKeepLog(true)
-            overrideBuildParameters(false)
-            parameters {
-                booleanParam('myBooleanParam', true)
-                booleanParam('my2ndBooleanParam', true)
+            preBuildPublishers {
+                archiveArtifacts('*.xml')
             }
             postSuccessfulBuildSteps {
                 shell('echo postsuccess;')
                 shell('echo hello world;')
             }
+            postSuccessfulBuildPublishers {
+                archiveArtifacts('*.xml')
+            }
             postBuildSteps {
                 shell('echo post;')
+            }
+            postBuildPublishers {
+                archiveArtifacts('*.xml')
             }
             postFailedBuildSteps {
                 shell('echo postfailed;')
             }
-        }
-
-        then:
-        context.wrapperNodes[0].name() == 'hudson.plugins.release.ReleaseWrapper'
-        def params = context.wrapperNodes[0]
-        params.value()[0].name() == 'releaseVersionTemplate'
-        params.value()[0].value() == 'templatename'
-        params.value()[1].name() == 'doNotKeepLog'
-        params.value()[1].value() == true
-        params.value()[2].name() == 'overrideBuildParameters'
-        params.value()[2].value() == false
-
-        def stepsPostSuccess = context.wrapperNodes[0].'postSuccessfulBuildSteps'
-        stepsPostSuccess[0].value()[0].name() == 'hudson.tasks.Shell'
-        stepsPostSuccess[0].value()[0].value()[0].name() == 'command'
-        stepsPostSuccess[0].value()[0].value()[0].value() == 'echo postsuccess;'
-        stepsPostSuccess[0].value()[1].name() == 'hudson.tasks.Shell'
-        stepsPostSuccess[0].value()[1].value()[0].name() == 'command'
-        stepsPostSuccess[0].value()[1].value()[0].value() == 'echo hello world;'
-
-        def stepsPost = context.wrapperNodes[0].'postBuildSteps'
-        stepsPost[0].value()[0].name() == 'hudson.tasks.Shell'
-        stepsPost[0].value()[0].value()[0].name() == 'command'
-        stepsPost[0].value()[0].value()[0].value() == 'echo post;'
-
-        def stepsPostFailed = context.wrapperNodes[0].'postFailedBuildSteps'
-        stepsPostFailed[0].value()[0].name() == 'hudson.tasks.Shell'
-        stepsPostFailed[0].value()[0].value()[0].name() == 'command'
-        stepsPostFailed[0].value()[0].value()[0].value() == 'echo postfailed;'
-
-        1 * mockJobManagement.requirePlugin('release')
-    }
-
-    def 'release plugin configure'() {
-        when:
-        context.release {
-            configure { project ->
-                def node = project / 'testCommand'
-                node << {
-                    custom('value')
-                }
+            postFailedBuildPublishers {
+                archiveArtifacts('*.xml')
+            }
+            configure {
+                it / custom('value')
             }
         }
 
         then:
-        context.wrapperNodes[0].name() == 'hudson.plugins.release.ReleaseWrapper'
-        def params = context.wrapperNodes[0].'testCommand'
-        params[0].value()[0].name() == 'custom'
-        params[0].value()[0].value() == 'value'
+        with(context.wrapperNodes[0]) {
+            name() == 'hudson.plugins.release.ReleaseWrapper'
+            children().size() == 9
+            releaseVersionTemplate[0].value() == 'templatename'
+            doNotKeepLog[0].value() == true
+            overrideBuildParameters[0].value() == true
+            parameterDefinitions[0].children().size() == 2
+            with(parameterDefinitions[0].children()[0]) {
+                name() == 'hudson.model.BooleanParameterDefinition'
+                children().size() == 2
+                name[0].value() == 'myBooleanParam'
+                defaultValue[0].value() == true
+            }
+            with(parameterDefinitions[0].children()[1]) {
+                name() == 'hudson.model.BooleanParameterDefinition'
+                children().size() == 2
+                name[0].value() == 'my2ndBooleanParam'
+                defaultValue[0].value() == true
+            }
+            preBuildSteps[0].children().size() == 2
+            with(preBuildSteps[0].children()[0]) {
+                name() == 'hudson.tasks.Shell'
+                children().size() == 1
+                command[0].value() == 'echo hello;'
+            }
+            with(preBuildSteps[0].children()[1]) {
+                name() == 'hudson.tasks.ArtifactArchiver'
+                children().size() == 5
+            }
+            postSuccessfulBuildSteps[0].children().size() == 3
+            with(postSuccessfulBuildSteps[0].children()[0]) {
+                name() == 'hudson.tasks.Shell'
+                children().size() == 1
+                command[0].value() == 'echo postsuccess;'
+            }
+            with(postSuccessfulBuildSteps[0].children()[1]) {
+                name() == 'hudson.tasks.Shell'
+                children().size() == 1
+                command[0].value() == 'echo hello world;'
+            }
+            with(postSuccessfulBuildSteps[0].children()[2]) {
+                name() == 'hudson.tasks.ArtifactArchiver'
+                children().size() == 5
+            }
+            postBuildSteps[0].children().size() == 2
+            with(postBuildSteps[0].children()[0]) {
+                name() == 'hudson.tasks.Shell'
+                children().size() == 1
+                command[0].value() == 'echo post;'
+            }
+            with(postBuildSteps[0].children()[1]) {
+                name() == 'hudson.tasks.ArtifactArchiver'
+                children().size() == 5
+            }
+            postFailedBuildSteps[0].children().size() == 2
+            with(postFailedBuildSteps[0].children()[0]) {
+                name() == 'hudson.tasks.Shell'
+                children().size() == 1
+                command[0].value() == 'echo postfailed;'
+            }
+            with(postFailedBuildSteps[0].children()[1]) {
+                name() == 'hudson.tasks.ArtifactArchiver'
+                children().size() == 5
+            }
+            custom[0].value() == 'value'
+        }
         1 * mockJobManagement.requirePlugin('release')
+        4 * mockJobManagement.requireMinimumPluginVersion('release', '2.5.3')
     }
 
     def 'phabricator with minimal options'() {
@@ -700,21 +782,6 @@ class WrapperContextSpec extends Specification {
 
         then:
         thrown(DslScriptException)
-    }
-
-    def 'call injectPasswords, deprecated variant'() {
-        when:
-        context.injectPasswords()
-
-        then:
-        with(context.wrapperNodes[0]) {
-            name() == 'EnvInjectPasswordWrapper'
-            children().size() == 2
-            children()[0].name() == 'injectGlobalPasswords'
-            children()[0].value() == true
-        }
-        1 * mockJobManagement.requirePlugin('envinject')
-        1 * mockJobManagement.logDeprecationWarning()
     }
 
     def 'call injectPasswords with minimal args'() {
@@ -944,18 +1011,28 @@ class WrapperContextSpec extends Specification {
         1 * mockJobManagement.requirePlugin('config-file-provider')
     }
 
-    def 'call configFile with unknown fileName'() {
+    def 'call configFile with file ID'() {
         setup:
-        String configName = 'lala'
+        String configId = 'lala'
 
         when:
         context.configFiles {
-            file(configName)
+            file(configId)
         }
 
         then:
-        Exception e = thrown(DslScriptException)
-        e.message.contains(configName)
+        with(context.wrapperNodes[0]) {
+            name() == 'org.jenkinsci.plugins.configfiles.buildwrapper.ConfigFileBuildWrapper'
+            children().size() == 1
+            managedFiles[0].children().size() == 1
+            with(managedFiles[0].'org.jenkinsci.plugins.configfiles.buildwrapper.ManagedFile'[0]) {
+                children().size() == 3
+                fileId[0].value() == configId
+                targetLocation[0].value() == ''
+                variable[0].value() == ''
+            }
+        }
+        1 * mockJobManagement.requirePlugin('config-file-provider')
     }
 
     def 'call exclusion with single arg'() {
@@ -965,9 +1042,9 @@ class WrapperContextSpec extends Specification {
         then:
         with(context.wrapperNodes[0]) {
             name() == 'org.jvnet.hudson.plugins.exclusion.IdAllocator'
-            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[0].name[0].value() == 'first'
+            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[0].name[0].value() == 'FIRST'
         }
-        (1.._) * mockJobManagement.requirePlugin('Exclusion')
+        (1.._) * mockJobManagement.requireMinimumPluginVersion('Exclusion', '0.12')
     }
 
     def 'call exclusion with multiple args'() {
@@ -977,11 +1054,11 @@ class WrapperContextSpec extends Specification {
         then:
         with(context.wrapperNodes[0]) {
             name() == 'org.jvnet.hudson.plugins.exclusion.IdAllocator'
-            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[0].name[0].value() == 'first'
-            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[1].name[0].value() == 'second'
-            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[2].name[0].value() == 'third'
+            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[0].name[0].value() == 'FIRST'
+            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[1].name[0].value() == 'SECOND'
+            ids[0].'org.jvnet.hudson.plugins.exclusion.DefaultIdType'[2].name[0].value() == 'THIRD'
         }
-        1 * mockJobManagement.requirePlugin('Exclusion')
+        1 * mockJobManagement.requireMinimumPluginVersion('Exclusion', '0.12')
     }
 
     def 'set delivery pipeline version'() {
@@ -997,6 +1074,7 @@ class WrapperContextSpec extends Specification {
             updateDisplayName[0].value() == false
         }
         1 * mockJobManagement.requirePlugin('delivery-pipeline-plugin')
+        1 * mockJobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
     }
 
     def 'set delivery pipeline version and display name'() {
@@ -1012,6 +1090,7 @@ class WrapperContextSpec extends Specification {
             updateDisplayName[0].value() == true
         }
         1 * mockJobManagement.requirePlugin('delivery-pipeline-plugin')
+        1 * mockJobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
     }
 
     def 'call mask passwords'() {
@@ -1048,7 +1127,7 @@ class WrapperContextSpec extends Specification {
         1 * mockJobManagement.requirePlugin('nodejs')
     }
 
-    def 'call sauce on demand with defaults'() {
+    def 'call sauce on demand with defaults for older plugin version'() {
         when:
         context.sauceOnDemand {
         }
@@ -1075,7 +1154,41 @@ class WrapperContextSpec extends Specification {
         }
     }
 
+    def 'call sauce on demand with defaults'() {
+        given:
+        mockJobManagement.isMinimumPluginVersionInstalled('sauce-ondemand', '1.148') >> true
+
+        when:
+        context.sauceOnDemand {
+        }
+
+        then:
+        with(context.wrapperNodes[0]) {
+            name() == 'hudson.plugins.sauce__ondemand.SauceOnDemandBuildWrapper'
+            children().size() == 16
+            useGeneratedTunnelIdentifier[0].value() == false
+            sendUsageData[0].value() == false
+            nativeAppPackage[0].value() == ''
+            useChromeForAndroid[0].value() == false
+            sauceConnectPath[0].value() == ''
+            enableSauceConnect[0].value() == false
+            seleniumHost[0].value() == ''
+            seleniumPort[0].value() == ''
+            webDriverBrowsers[0].value().empty
+            appiumBrowsers[0].value().empty
+            useLatestVersion[0].value() == false
+            launchSauceConnectOnSlave[0].value() == false
+            options[0].value() == ''
+            credentialId[0].value() == ''
+            verboseLogging[0].value() == false
+            condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.AlwaysRun'
+        }
+    }
+
     def 'call sauce on demand with all options'() {
+        given:
+        mockJobManagement.isMinimumPluginVersionInstalled('sauce-ondemand', '1.148') >> true
+
         when:
         context.sauceOnDemand {
             useGeneratedTunnelIdentifier()
@@ -1092,13 +1205,14 @@ class WrapperContextSpec extends Specification {
             useLatestVersion()
             launchSauceConnectOnSlave()
             options('options')
+            credentials('credentialId')
             verboseLogging()
         }
 
         then:
         with(context.wrapperNodes[0]) {
             name() == 'hudson.plugins.sauce__ondemand.SauceOnDemandBuildWrapper'
-            children().size() == 15
+            children().size() == 16
             useGeneratedTunnelIdentifier[0].value() == true
             sendUsageData[0].value() == true
             nativeAppPackage[0].value() == 'nativeAppPackage'
@@ -1118,6 +1232,7 @@ class WrapperContextSpec extends Specification {
             useLatestVersion[0].value() == true
             launchSauceConnectOnSlave[0].value() == true
             options[0].value() == 'options'
+            credentialId[0].value() == 'credentialId'
             verboseLogging[0].value() == true
             condition[0].attribute('class') == 'org.jenkins_ci.plugins.run_condition.core.AlwaysRun'
         }
@@ -1287,9 +1402,6 @@ class WrapperContextSpec extends Specification {
     }
 
     def 'buildInDocker with no options'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('docker-custom-build-environment', '1.6.2') >> true
-
         when:
         context.buildInDocker {
         }
@@ -1311,14 +1423,10 @@ class WrapperContextSpec extends Specification {
             group[0].value().empty
             command[0].value() == '/bin/cat'
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.5.1')
-        1 * mockJobManagement.logPluginDeprecationWarning('docker-custom-build-environment', '1.6.2')
+        1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.6.2')
     }
 
     def 'buildInDocker with dockerfile selector and all options'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('docker-custom-build-environment', '1.6.2') >> true
-
         when:
         context.buildInDocker {
             dockerfile('test1', 'test2')
@@ -1359,15 +1467,10 @@ class WrapperContextSpec extends Specification {
             group[0].value() == 'test10'
             command[0].value() == 'test11'
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.5.1')
         1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.6.2')
-        1 * mockJobManagement.logPluginDeprecationWarning('docker-custom-build-environment', '1.6.2')
     }
 
     def 'buildInDocker with image selector and all options'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('docker-custom-build-environment', '1.6.2') >> true
-
         when:
         context.buildInDocker {
             image('test1')
@@ -1407,34 +1510,7 @@ class WrapperContextSpec extends Specification {
             group[0].value() == 'test10'
             command[0].value() == 'test11'
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.5.1')
         1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.6.2')
-        1 * mockJobManagement.logPluginDeprecationWarning('docker-custom-build-environment', '1.6.2')
-    }
-
-    def 'buildInDocker with no options with 1.6.1'() {
-        when:
-        context.buildInDocker {
-        }
-
-        then:
-        with(context.wrapperNodes[0]) {
-            name() == 'com.cloudbees.jenkins.plugins.okidocki.DockerBuildWrapper'
-            children().size() == 8
-            selector[0].children().size() == 2
-            selector[0].attribute('class') == 'com.cloudbees.jenkins.plugins.okidocki.DockerfileImageSelector'
-            selector[0].contextPath[0].value() == '.'
-            selector[0].dockerfile[0].value() == 'Dockerfile'
-            dockerHost[0].value().empty
-            dockerRegistryCredentials[0].value().empty
-            verbose[0].value() == false
-            volumes[0].value().empty
-            privileged[0].value() == false
-            group[0].value().empty
-            command[0].value() == '/bin/cat'
-        }
-        1 * mockJobManagement.requireMinimumPluginVersion('docker-custom-build-environment', '1.5.1')
-        1 * mockJobManagement.logPluginDeprecationWarning('docker-custom-build-environment', '1.6.2')
     }
 
     def 'call generateJiraReleaseNotes with no options'() {

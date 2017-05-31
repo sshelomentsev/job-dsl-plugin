@@ -177,14 +177,11 @@ class MultiJobStepContextSpec extends Specification {
             }
         }
 
-        1 * jobManagement.requireMinimumPluginVersion('git', '2.2.6')
+        1 * jobManagement.requireMinimumPluginVersion('git', '2.5.3')
         1 * jobManagement.requireMinimumPluginVersion('parameterized-trigger', '2.26')
     }
 
     def 'call phases with plugin version 1.14 options'() {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('jenkins-multijob-plugin', '1.32') >> true
-
         when:
         context.phase {
             phaseName('Second')
@@ -241,10 +238,17 @@ class MultiJobStepContextSpec extends Specification {
         thrown(DslScriptException)
     }
 
-    def 'call phase with supported condition'(String condition) {
-        setup:
-        jobManagement.isMinimumPluginVersionInstalled('jenkins-multijob-plugin', '1.32') >> true
+    def 'call phase with unsupported execution type'() {
+        when:
+        context.phase('test') {
+            executionType('FOO')
+        }
 
+        then:
+        thrown(DslScriptException)
+    }
+
+    def 'call phase with supported condition'(String condition) {
         when:
         context.phase('test', condition) {
         }
@@ -262,6 +266,26 @@ class MultiJobStepContextSpec extends Specification {
 
         where:
         condition << ['FAILURE', 'ALWAYS']
+    }
+
+    def 'call phase with supported execution type'(String execution) {
+        when:
+        context.phase('test') {
+            executionType(execution)
+        }
+
+        then:
+        with(context.stepNodes[0]) {
+            name() == 'com.tikal.jenkins.plugins.multijob.MultiJobBuilder'
+            children().size() == 4
+            phaseName[0].value() == 'test'
+            continuationCondition[0].value() == 'SUCCESSFUL'
+            executionType[0].value() == execution
+            phaseJobs[0].value().empty
+        }
+
+        where:
+        execution << ['PARALLEL', 'SEQUENTIALLY']
     }
 
     def 'phase works inside conditionalSteps'() {

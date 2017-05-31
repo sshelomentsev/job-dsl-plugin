@@ -10,7 +10,7 @@ import static org.custommonkey.xmlunit.XMLUnit.setIgnoreWhitespace
 
 class DeliveryPipelineViewSpec extends Specification {
     JobManagement jobManagement = Mock(JobManagement)
-    DeliveryPipelineView view = new DeliveryPipelineView(jobManagement)
+    DeliveryPipelineView view = new DeliveryPipelineView(jobManagement, 'test')
 
     def setup() {
         setIgnoreWhitespace(true)
@@ -38,6 +38,7 @@ class DeliveryPipelineViewSpec extends Specification {
         Sorting.NONE          | 'none'
         Sorting.TITLE         | 'se.diabol.jenkins.pipeline.sort.NameComparator'
         Sorting.LAST_ACTIVITY | 'se.diabol.jenkins.pipeline.sort.LatestActivityComparator'
+        Sorting.FAILED_FIRST  | 'se.diabol.jenkins.pipeline.sort.FailedJobComparator'
     }
 
     def 'all options'() {
@@ -56,6 +57,9 @@ class DeliveryPipelineViewSpec extends Specification {
             allowPipelineStart()
             showDescription()
             showPromotions()
+            enablePaging()
+            showTestResults(true)
+            useTheme('foo')
 
             pipelines {
                 component('test', 'compile-a')
@@ -67,6 +71,8 @@ class DeliveryPipelineViewSpec extends Specification {
         compareXML(allOptionsXml, view.xml).similar()
         3 * jobManagement.requireMinimumPluginVersion('delivery-pipeline-plugin', '0.9.5')
         2 * jobManagement.requireMinimumPluginVersion('delivery-pipeline-plugin', '0.9.0')
+        2 * jobManagement.requireMinimumPluginVersion('delivery-pipeline-plugin', '0.9.10')
+        1 * jobManagement.requireMinimumPluginVersion('delivery-pipeline-plugin', '0.9.6')
     }
 
     def defaultXml = '''<?xml version='1.0' encoding='UTF-8'?>
@@ -117,6 +123,9 @@ class DeliveryPipelineViewSpec extends Specification {
     <allowPipelineStart>true</allowPipelineStart>
     <showDescription>true</showDescription>
     <showPromotions>true</showPromotions>
+    <pagingEnabled>true</pagingEnabled>
+    <showTestResults>true</showTestResults>
+    <theme>foo</theme>
     <componentSpecs>
         <se.diabol.jenkins.pipeline.DeliveryPipelineView_-ComponentSpec>
             <name>test</name>

@@ -4,10 +4,12 @@ import groovy.json.JsonBuilder
 import javaposse.jobdsl.dsl.DslFactory
 import javaposse.jobdsl.dsl.NoDoc
 import javaposse.jobdsl.dsl.RequiresPlugin
+import javaposse.jobdsl.dsl.RequiresPlugins
 import org.codehaus.groovy.groovydoc.GroovyAnnotationRef
 import org.codehaus.groovy.groovydoc.GroovyClassDoc
 import org.codehaus.groovy.groovydoc.GroovyMethodDoc
 import org.codehaus.groovy.groovydoc.GroovyParameter
+import org.codehaus.groovy.groovydoc.GroovyTag
 import org.codehaus.groovy.tools.groovydoc.ArrayClassDocWrapper
 
 import java.lang.annotation.Annotation
@@ -84,7 +86,7 @@ class ApiDocGenerator {
                 !(it.declaringClass in [Object, Script]) &&
                 Modifier.isPublic(it.modifiers) &&
                 !it.name.contains('$') &&
-                !it.getAnnotation(NoDoc) &&
+                (!it.getAnnotation(NoDoc) || it.getAnnotation(NoDoc).embeddedOnly()) &&
                 !(it.name in ['invokeMethod', 'executeWithXmlActions', 'methodMissing'])
         }*.name.unique().sort()
         methodNames.collect { processMethodName it, clazz }
@@ -116,7 +118,7 @@ class ApiDocGenerator {
 
         String examples = getExamples(clazz, methodName)
         if (examples) {
-            methodMap.examples = examples
+            methodMap.examples = examples.trim()
         }
 
         methodMap
@@ -158,25 +160,40 @@ class ApiDocGenerator {
     private Map processMethod(Method method, GroovyMethodDoc methodDoc) {
         Map map = [parameters: []]
         Type[] types = method.genericParameterTypes
+        GroovyTag[] tags = methodDoc.tags()
         methodDoc.parameters().eachWithIndex { GroovyParameter parameter, int index ->
             map.parameters << processParameter(parameter, types[index])
         }
 
-        if (method.getAnnotation(Deprecated)) {  // TODO or comment deprecated
+        if (method.getAnnotation(Deprecated) || tags.any { it.name() == 'deprecated' }) {
             map.deprecated = true
+            String deprecatedText = tags.find { it.name() == 'deprecated' }?.text()?.trim()
+            if (deprecatedText) {
+                map.deprecatedText = stripTags(deprecatedText)
+                map.deprecatedHtml = deprecatedText
+            }
         }
 
-        String availableSince = methodDoc.tags().find { it.name() == 'since' }?.text()
+        if (method.getAnnotation(NoDoc) && method.getAnnotation(NoDoc).embeddedOnly()) {
+            map.embeddedOnly = true
+        }
+
+        String availableSince = tags.find { it.name() == 'since' }?.text()
         if (availableSince) {
-            map.availableSince = availableSince
+            map.availableSince = availableSince.trim()
         }
 
+        List plugins = []
         RequiresPlugin requiresPluginAnnotation = method.getAnnotation(RequiresPlugin)
         if (requiresPluginAnnotation) {
-            map.plugin = [id: requiresPluginAnnotation.id()]
-            if (requiresPluginAnnotation.minimumVersion()) {
-                map.plugin.minimumVersion = requiresPluginAnnotation.minimumVersion()
-            }
+            plugins << createPlugin(requiresPluginAnnotation)
+        }
+        RequiresPlugins requiresPluginsAnnotation = method.getAnnotation(RequiresPlugins)
+        if (requiresPluginsAnnotation) {
+            requiresPluginsAnnotation.value().each { plugins << createPlugin(it) }
+        }
+        if (plugins) {
+            map.plugins = plugins
         }
 
         GroovyMethodDoc methodDocWithComment = getMethodHierarchy(method, methodDoc).find {
@@ -189,7 +206,7 @@ class ApiDocGenerator {
                 comment = comment[0..<defListIndex]
             }
             if (comment) {
-                map.html = comment
+                map.html = comment.trim()
             }
 
             String firstSentenceCommentText = methodDocWithComment.firstSentenceCommentText()
@@ -198,7 +215,7 @@ class ApiDocGenerator {
                 firstSentenceCommentText = firstSentenceCommentText[0..<annotationIndex]
             }
             if (firstSentenceCommentText) {
-                firstSentenceCommentText = firstSentenceCommentText.replaceAll('<[^>]*>', '') // strip tags
+                firstSentenceCommentText = stripTags(firstSentenceCommentText)
                 map.firstSentenceCommentText = firstSentenceCommentText
             }
         }
@@ -269,5 +286,17 @@ class ApiDocGenerator {
             }
         }
         name
+    }
+
+    private static Map createPlugin(RequiresPlugin requiresPluginAnnotation) {
+        Map plugin = [id: requiresPluginAnnotation.id()]
+        if (requiresPluginAnnotation.minimumVersion()) {
+            plugin.minimumVersion = requiresPluginAnnotation.minimumVersion()
+        }
+        plugin
+    }
+
+    private static String stripTags(String text) {
+        text.replaceAll('<[^>]*>', '')
     }
 }

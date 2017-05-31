@@ -1,12 +1,14 @@
 package javaposse.jobdsl.dsl
 
 import groovy.transform.ThreadInterrupt
+import javaposse.jobdsl.dsl.helpers.ConfigFilesContext
 import javaposse.jobdsl.dsl.jobs.BuildFlowJob
 import javaposse.jobdsl.dsl.jobs.FreeStyleJob
 import javaposse.jobdsl.dsl.jobs.IvyJob
 import javaposse.jobdsl.dsl.jobs.MatrixJob
 import javaposse.jobdsl.dsl.jobs.MavenJob
 import javaposse.jobdsl.dsl.jobs.MultiJob
+import javaposse.jobdsl.dsl.jobs.OrganizationFolderJob
 import javaposse.jobdsl.dsl.jobs.WorkflowJob
 import javaposse.jobdsl.dsl.jobs.MultibranchWorkflowJob
 import javaposse.jobdsl.dsl.views.BuildMonitorView
@@ -26,6 +28,7 @@ abstract class JobParent extends Script implements DslFactory {
     JobManagement jm
     Set<Item> referencedJobs = new LinkedHashSet<>()
     Set<View> referencedViews = new LinkedHashSet<>()
+    @Deprecated
     Set<ConfigFile> referencedConfigFiles = new LinkedHashSet<>()
     Set<UserContent> referencedUserContents = new LinkedHashSet<>()
     List<String> queueToBuild = []
@@ -50,6 +53,7 @@ abstract class JobParent extends Script implements DslFactory {
      * @since 1.30
      */
     @Override
+    @Deprecated
     BuildFlowJob buildFlowJob(String name, @DslContext(BuildFlowJob) Closure closure = null) {
         processItem(name, BuildFlowJob, closure)
     }
@@ -87,32 +91,11 @@ abstract class JobParent extends Script implements DslFactory {
     }
 
     /**
-     * @since 1.30
-     * @deprecated as of 1.47. Use #pipelineJob(java.lang.String, groovy.lang.Closure) instead.
-     */
-    @Deprecated
-    @Override
-    WorkflowJob workflowJob(String name, @DslContext(WorkflowJob) Closure closure = null) {
-        pipelineJob(name, closure)
-    }
-
-    /**
      * @since 1.47
      */
     @Override
     WorkflowJob pipelineJob(String name, @DslContext(WorkflowJob) Closure closure = null) {
         processItem(name, WorkflowJob, closure)
-    }
-
-    /**
-     * @since 1.42
-     * @deprecated as of 1.47. Use #multibranchPipelineJob(java.lang.String, groovy.lang.Closure) instead.
-     */
-    @Deprecated
-    @Override
-    MultibranchWorkflowJob multibranchWorkflowJob(String name,
-                                                  @DslContext(MultibranchWorkflowJob) Closure closure = null) {
-        multibranchPipelineJob(name, closure)
     }
 
     /**
@@ -128,8 +111,7 @@ abstract class JobParent extends Script implements DslFactory {
     protected <T extends Item> T processItem(String name, Class<T> jobClass, Closure closure) {
         checkNotNullOrEmpty(name, 'name must be specified')
 
-        T job = jobClass.newInstance(jm)
-        job.name = name
+        T job = jobClass.newInstance(jm, name)
         if (closure) {
             job.with(closure)
         }
@@ -166,7 +148,15 @@ abstract class JobParent extends Script implements DslFactory {
      */
     @Override
     DeliveryPipelineView deliveryPipelineView(String name, @DslContext(DeliveryPipelineView) Closure closure = null) {
+        jm.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
         processView(name, DeliveryPipelineView, closure)
+    }
+
+    /**
+     * @since 1.58
+     */
+    OrganizationFolderJob organizationFolder(String name, @DslContext(OrganizationFolderJob) Closure closure = null) {
+        processItem(name, OrganizationFolderJob, closure)
     }
 
     /**
@@ -205,8 +195,7 @@ abstract class JobParent extends Script implements DslFactory {
     protected <T extends View> T processView(String name, Class<T> viewClass, Closure closure) {
         checkNotNullOrEmpty(name, 'name must be specified')
 
-        T view = viewClass.newInstance(jm)
-        view.name = name
+        T view = viewClass.newInstance(jm, name)
         if (closure) {
             view.with(closure)
         }
@@ -219,14 +208,13 @@ abstract class JobParent extends Script implements DslFactory {
      */
     @Override
     Folder folder(String name, @DslContext(Folder) Closure closure = null) {
-        jm.logPluginDeprecationWarning('cloudbees-folder', '5.0')
-
         processItem(name, Folder, closure)
     }
 
     /**
      * @since 1.30
      */
+    @Deprecated
     ConfigFile customConfigFile(String name, @DslContext(ConfigFile) Closure closure = null) {
         processConfigFile(name, ConfigFileType.Custom, closure)
     }
@@ -234,20 +222,23 @@ abstract class JobParent extends Script implements DslFactory {
     /**
      * @since 1.30
      */
-    ConfigFile mavenSettingsConfigFile(String name, @DslContext(ConfigFile) Closure closure = null) {
-        processConfigFile(name, ConfigFileType.MavenSettings, closure)
+    @Deprecated
+    MavenSettingsConfigFile mavenSettingsConfigFile(String name, @DslContext(ConfigFile) Closure closure = null) {
+        processConfigFile(name, ConfigFileType.MavenSettings, MavenSettingsConfigFile, closure)
     }
 
     /**
      * @since 1.39
      */
-    ConfigFile globalMavenSettingsConfigFile(String name, @DslContext(ConfigFile) Closure closure = null) {
-        processConfigFile(name, ConfigFileType.GlobalMavenSettings, closure)
+    @Deprecated
+    MavenSettingsConfigFile globalMavenSettingsConfigFile(String name, @DslContext(ConfigFile) Closure closure = null) {
+        processConfigFile(name, ConfigFileType.GlobalMavenSettings, MavenSettingsConfigFile, closure)
     }
 
     /**
      * @since 1.40
      */
+    @Deprecated
     ParametrizedConfigFile managedScriptConfigFile(String name,
                                                    @DslContext(ParametrizedConfigFile) Closure closure = null) {
         processConfigFile(name, ConfigFileType.ManagedScript, ParametrizedConfigFile, closure)
@@ -265,6 +256,10 @@ abstract class JobParent extends Script implements DslFactory {
         }
         referencedConfigFiles << configFile
         configFile
+    }
+
+    @Override
+    void configFiles(@DslContext(ConfigFilesContext) Closure closure) {
     }
 
     @Override

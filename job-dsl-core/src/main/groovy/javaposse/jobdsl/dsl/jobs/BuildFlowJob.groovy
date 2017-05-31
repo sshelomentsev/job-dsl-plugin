@@ -8,8 +8,8 @@ import javaposse.jobdsl.dsl.RequiresPlugin
 import javaposse.jobdsl.dsl.helpers.publisher.BuildFlowPublisherContext
 
 class BuildFlowJob extends Job {
-    BuildFlowJob(JobManagement jobManagement) {
-        super(jobManagement)
+    BuildFlowJob(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     /**

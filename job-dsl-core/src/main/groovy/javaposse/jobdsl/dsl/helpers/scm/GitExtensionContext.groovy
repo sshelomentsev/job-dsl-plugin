@@ -34,9 +34,7 @@ class GitExtensionContext extends AbstractExtensibleContext {
                 mergeRemote(gitMergeOptionsContext.remote ?: '')
                 mergeTarget(gitMergeOptionsContext.branch ?: '')
                 mergeStrategy(gitMergeOptionsContext.strategy)
-                if (jobManagement.isMinimumPluginVersionInstalled('git', '2.3.5')) {
-                    fastForwardMode(gitMergeOptionsContext.fastForwardMode.name())
-                }
+                fastForwardMode(gitMergeOptionsContext.fastForwardMode.name())
             }
         }
     }
@@ -61,15 +59,17 @@ class GitExtensionContext extends AbstractExtensibleContext {
      * Specifies behaviors for cloning repositories.
      */
     void cloneOptions(@DslContext(GitCloneOptionsContext) Closure closure) {
-        GitCloneOptionsContext context = new GitCloneOptionsContext()
+        GitCloneOptionsContext context = new GitCloneOptionsContext(jobManagement)
         executeInContext(closure, context)
 
         extensions << NodeBuilder.newInstance().'hudson.plugins.git.extensions.impl.CloneOption' {
             shallow(context.shallow)
+            noTags(context.noTags)
             reference(context.reference ?: '')
             if (context.timeout != null) {
                 timeout(context.timeout)
             }
+            honorRefspec(context.honorRefspec)
         }
     }
 
@@ -84,11 +84,12 @@ class GitExtensionContext extends AbstractExtensibleContext {
             disableSubmodules(context.disable)
             recursiveSubmodules(context.recursive)
             trackingSubmodules(context.tracking)
-            if (jobManagement.isMinimumPluginVersionInstalled('git', '2.4.1')) {
-                reference(context.reference ?: '')
-            }
-            if (jobManagement.isMinimumPluginVersionInstalled('git', '2.2.8') && context.timeout != null) {
+            reference(context.reference ?: '')
+            if (context.timeout != null) {
                 timeout(context.timeout)
+            }
+            if (jobManagement.isMinimumPluginVersionInstalled('git', '3.0.0')) {
+                parentCredentials(context.parentCredentials)
             }
         }
     }
@@ -116,10 +117,21 @@ class GitExtensionContext extends AbstractExtensibleContext {
 
     /**
      * If given, checkout the revision to build as HEAD on this branch.
+     *
+     * @since 1.53
+     */
+    void localBranch() {
+        localBranch(null)
+    }
+
+    /**
+     * If given, checkout the revision to build as HEAD on this branch.
      */
     void localBranch(String branch) {
         extensions << NodeBuilder.newInstance().'hudson.plugins.git.extensions.impl.LocalBranch' {
-            delegate.localBranch(branch)
+            if (branch) {
+                delegate.localBranch(branch)
+            }
         }
     }
 

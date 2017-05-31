@@ -1,5 +1,8 @@
 package javaposse.jobdsl.plugin.structs
 
+import groovy.transform.EqualsAndHashCode
+import hudson.ExtensionList
+import hudson.ExtensionListListener
 import hudson.model.Describable
 import hudson.model.Descriptor
 import javaposse.jobdsl.dsl.Context
@@ -14,8 +17,11 @@ import org.jenkinsci.plugins.structs.describable.DescribableModel
 import org.jenkinsci.plugins.structs.describable.ErrorType
 import org.kohsuke.stapler.NoStaplerConstructorException
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Level
 import java.util.logging.Logger
+
+import static java.util.Collections.unmodifiableCollection
 
 /**
  * Provides utility methods for extending the DSL with any {@link Describable}.
@@ -26,6 +32,17 @@ class DescribableHelper {
     private static final Logger LOGGER = Logger.getLogger(DescribableHelper.name)
     private static final Collection<String> KEYWORDS = Types.keywords
 
+    private static final Map<CacheKey, Collection<DescribableModel>> CACHE = new ConcurrentHashMap<>()
+
+    static {
+        ExtensionList.lookup(Descriptor).addListener(new ExtensionListListener() {
+            @Override
+            void onChange() {
+                CACHE.clear()
+            }
+        })
+    }
+
     /**
      * Finds {@link DescribableModel}s with the given name within the set of given models.
      *
@@ -35,7 +52,10 @@ class DescribableHelper {
      * @see #uncapitalize(java.lang.Class)
      */
     static Collection<DescribableModel> findDescribableModels(Collection<DescribableModel> models, String name) {
-        Collection<DescribableModel> result = models.findAll { SymbolLookup.get().find(getTypeForLookup(it), name) }
+        Collection<DescribableModel> result = models.findAll {
+            Class type = getTypeForLookup(it)
+            type == null ? null : SymbolLookup.get().find(type, name)
+        }
         result ?: models.findAll { uncapitalize(it.type) == name }
     }
 
@@ -48,9 +68,16 @@ class DescribableHelper {
      * @see #uncapitalize(java.lang.Class)
      */
     static Collection<DescribableModel> findDescribableModels(Class<? extends Context> contextClass, String name) {
-        Collection<Descriptor> descriptors = getDescriptors(contextClass)
-        Collection<Descriptor> result = descriptors.findAll { SymbolLookup.get().find(it.class, name) }
-        getDescribableModels(result ?: descriptors.findAll { uncapitalize(it.clazz) == name })
+        CacheKey cacheKey = new CacheKey(contextClass, name)
+        Collection<DescribableModel> result = CACHE.get(cacheKey)
+        if (result == null) {
+            Collection<Descriptor> descriptors = getDescriptors(contextClass)
+            Collection<Descriptor> symbols = descriptors.findAll { SymbolLookup.get().find(it.class, name) }
+            result = getDescribableModels(symbols ?: descriptors.findAll { uncapitalize(it.clazz) == name })
+            result = unmodifiableCollection(result)
+            CACHE.put(cacheKey, result)
+        }
+        result
     }
 
     /**
@@ -123,7 +150,7 @@ class DescribableHelper {
     }
 
     private static Class getTypeForLookup(DescribableModel model) {
-        Describable.isAssignableFrom(model.type) ? Jenkins.instance.getDescriptorOrDie(model.type).class : model.type
+        Describable.isAssignableFrom(model.type) ? Jenkins.instance.getDescriptor(model.type)?.class : model.type
     }
 
     private static List<Descriptor> getDescriptors(Class<?> contextType) {
@@ -167,7 +194,7 @@ class DescribableHelper {
         Map<String, DescribableModel> result = [:]
         Set<String> duplicateSymbols = []
         models.each { DescribableModel model ->
-            Symbol symbol = getTypeForLookup(model).getAnnotation(Symbol)
+            Symbol symbol = getTypeForLookup(model)?.getAnnotation(Symbol)
             symbol?.value()?.each {
                 if (!duplicateSymbols.contains(it)) {
                     if (result.containsKey(it)) {
@@ -209,5 +236,16 @@ class DescribableHelper {
     private static Map<String, DescribableModel> filterIllegalSymbols(Map<String, DescribableModel> symbols,
                                                                       Collection<String> illegalSymbols) {
         symbols.findAll { !illegalSymbols.contains(it.key) }
+    }
+
+    @EqualsAndHashCode
+    private static class CacheKey {
+        final Class<? extends Context> contextClass
+        final String name
+
+        CacheKey(Class<? extends Context> contextClass, String name) {
+            this.contextClass = contextClass
+            this.name = name
+        }
     }
 }

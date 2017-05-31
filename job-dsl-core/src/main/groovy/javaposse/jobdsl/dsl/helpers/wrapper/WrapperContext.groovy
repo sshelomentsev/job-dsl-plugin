@@ -8,6 +8,7 @@ import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.dsl.Preconditions
 import javaposse.jobdsl.dsl.RequiresPlugin
 import javaposse.jobdsl.dsl.AbstractExtensibleContext
+import javaposse.jobdsl.dsl.RequiresPlugins
 
 @ContextType('hudson.tasks.BuildWrapper')
 class WrapperContext extends AbstractExtensibleContext {
@@ -51,8 +52,13 @@ class WrapperContext extends AbstractExtensibleContext {
      *
      * @since 1.27
      */
-    @RequiresPlugin(id = 'rbenv')
+    @RequiresPlugins([
+            @RequiresPlugin(id = 'rbenv'),
+            @RequiresPlugin(id = 'ruby-runtime', minimumVersion = '0.12')
+    ])
     void rbenv(String rubyVersion, @DslContext(RbenvContext) Closure rbenvClosure = null) {
+        jobManagement.logPluginDeprecationWarning('rbenv', '0.0.17')
+
         RbenvContext rbenvContext = new RbenvContext()
         ContextHelper.executeInContext(rbenvClosure, rbenvContext)
 
@@ -82,13 +88,15 @@ class WrapperContext extends AbstractExtensibleContext {
      *                          optionally containing a gemset
      *                          (i.e. ruby-1.9.3, ruby-2.0.0@gemset-foo)
      */
-    @RequiresPlugin(id = 'rvm')
+    @RequiresPlugins([
+            @RequiresPlugin(id = 'rvm', minimumVersion = '0.6'),
+            @RequiresPlugin(id = 'ruby-runtime', minimumVersion = '0.12')
+    ])
     void rvm(String rubySpecification) {
         Preconditions.checkArgument(rubySpecification as Boolean, 'Please specify at least the ruby version')
 
         wrapperNodes << new NodeBuilder().'ruby-proxy-object' {
-            'ruby-object'('ruby-class': 'Jenkins::Plugin::Proxies::BuildWrapper', pluginid: 'rvm') {
-
+            'ruby-object'('ruby-class': 'Jenkins::Tasks::BuildWrapperProxy', pluginid: 'rvm') {
                 pluginid('rvm', [pluginid: 'rvm', 'ruby-class': 'String'])
                 object('ruby-class': 'RvmWrapper', pluginid: 'rvm') {
                     impl(rubySpecification, [pluginid: 'rvm', 'ruby-class': 'String'])
@@ -170,10 +178,30 @@ class WrapperContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'ssh-agent')
     void sshAgent(String credentials) {
+        jobManagement.logPluginDeprecationWarning('ssh-agent', '1.5')
         Preconditions.checkNotNull(credentials, 'credentials must not be null')
 
         wrapperNodes << new NodeBuilder().'com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper' {
             user(credentials)
+        }
+    }
+
+    /**
+     * Provide SSH credentials to builds via a ssh-agent in Jenkins.
+     *
+     * @param credentials name of the credentials to use
+     * @since 1.56
+     */
+    @RequiresPlugin(id = 'ssh-agent', minimumVersion = '1.5')
+    void sshAgent(String... credentials) {
+        Preconditions.checkNotNull(credentials, 'credentials must not be null')
+
+        wrapperNodes << new NodeBuilder().'com.cloudbees.jenkins.plugins.sshagent.SSHAgentBuildWrapper' {
+            credentialIds {
+                credentials.each {
+                    string(it)
+                }
+            }
         }
     }
 
@@ -260,20 +288,6 @@ class WrapperContext extends AbstractExtensibleContext {
 
         wrapperNodes << new NodeBuilder().'EnvInjectBuildWrapper' {
             envContext.addInfoToBuilder(delegate)
-        }
-    }
-
-    /**
-     * Injects globally defined passwords as environment variables into the job.
-     *
-     * @since 1.23
-     */
-    @Deprecated
-    @RequiresPlugin(id = 'envinject')
-    void injectPasswords() {
-        wrapperNodes << new NodeBuilder().'EnvInjectPasswordWrapper' {
-            'injectGlobalPasswords'(true)
-            'passwordEntries'()
         }
     }
 
@@ -433,7 +447,7 @@ class WrapperContext extends AbstractExtensibleContext {
      *
      * @since 1.24
      */
-    @RequiresPlugin(id = 'Exclusion')
+    @RequiresPlugin(id = 'Exclusion', minimumVersion = '0.12')
     void exclusionResources(String... resourceNames) {
         exclusionResources(resourceNames.toList())
     }
@@ -444,13 +458,13 @@ class WrapperContext extends AbstractExtensibleContext {
      *
      * @since 1.24
      */
-    @RequiresPlugin(id = 'Exclusion')
+    @RequiresPlugin(id = 'Exclusion', minimumVersion = '0.12')
     void exclusionResources(Iterable<String> resourceNames) {
         wrapperNodes << new NodeBuilder().'org.jvnet.hudson.plugins.exclusion.IdAllocator' {
             ids {
                 resourceNames.each { String resourceName ->
                     'org.jvnet.hudson.plugins.exclusion.DefaultIdType' {
-                        name resourceName
+                        name(resourceName.toUpperCase(Locale.ENGLISH))
                     }
                 }
             }
@@ -464,6 +478,8 @@ class WrapperContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'delivery-pipeline-plugin')
     void deliveryPipelineVersion(String template, boolean setDisplayName = false) {
+        jobManagement.logPluginDeprecationWarning('delivery-pipeline-plugin', '0.10.0')
+
         wrapperNodes << new NodeBuilder().'se.diabol.jenkins.pipeline.PipelineVersionContributor' {
             versionTemplate(template)
             updateDisplayName(setDisplayName)
@@ -521,7 +537,7 @@ class WrapperContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'credentials-binding')
     void credentialsBinding(@DslContext(CredentialsBindingContext) Closure closure) {
-        CredentialsBindingContext context = new CredentialsBindingContext(jobManagement)
+        CredentialsBindingContext context = new CredentialsBindingContext(jobManagement, item)
         ContextHelper.executeInContext(closure, context)
 
         wrapperNodes << new NodeBuilder().'org.jenkinsci.plugins.credentialsbinding.impl.SecretBuildWrapper' {
@@ -577,10 +593,8 @@ class WrapperContext extends AbstractExtensibleContext {
      *
      * @since 1.39
      */
-    @RequiresPlugin(id = 'docker-custom-build-environment', minimumVersion = '1.5.1')
+    @RequiresPlugin(id = 'docker-custom-build-environment', minimumVersion = '1.6.2')
     void buildInDocker(@DslContext(BuildInDockerContext) Closure closure) {
-        jobManagement.logPluginDeprecationWarning('docker-custom-build-environment', '1.6.2')
-
         BuildInDockerContext context = new BuildInDockerContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
 
@@ -597,9 +611,7 @@ class WrapperContext extends AbstractExtensibleContext {
             verbose(context.verbose)
             volumes(context.volumes)
             privileged(context.privilegedMode)
-            if (jobManagement.isMinimumPluginVersionInstalled('docker-custom-build-environment', '1.6.2')) {
-                forcePull(context.forcePull)
-            }
+            forcePull(context.forcePull)
             group(context.userGroup ?: '')
             command(context.startCommand ?: '')
         }
@@ -614,7 +626,7 @@ class WrapperContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'sauce-ondemand', minimumVersion = '1.142')
     void sauceOnDemand(@DslContext(SauceOnDemandContext) Closure closure) {
-        SauceOnDemandContext context = new SauceOnDemandContext()
+        SauceOnDemandContext context = new SauceOnDemandContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
 
         wrapperNodes << new NodeBuilder().'hudson.plugins.sauce__ondemand.SauceOnDemandBuildWrapper' {
@@ -639,6 +651,9 @@ class WrapperContext extends AbstractExtensibleContext {
             useLatestVersion(context.useLatestVersion)
             launchSauceConnectOnSlave(context.launchSauceConnectOnSlave)
             options(context.options ?: '')
+            if (jobManagement.isMinimumPluginVersionInstalled('sauce-ondemand', '1.148')) {
+                credentialId(context.credentialsId ?: '')
+            }
             verboseLogging(context.verboseLogging)
             condition(class: 'org.jenkins_ci.plugins.run_condition.core.AlwaysRun')
         }

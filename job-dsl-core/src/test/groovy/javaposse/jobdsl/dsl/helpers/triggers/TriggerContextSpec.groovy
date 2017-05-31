@@ -285,59 +285,6 @@ class TriggerContextSpec extends Specification {
         null     | 'UNSTABLE'
     }
 
-    def 'call rundeck trigger with default options'() {
-        when:
-        context.rundeck()
-
-        then:
-        with(context.triggerNodes[0]) {
-            name() == 'org.jenkinsci.plugins.rundeck.RundeckTrigger'
-            children().size() == 4
-            spec[0].value().empty
-            filterJobs[0].value() == false
-            jobsIdentifiers[0].value().empty
-            executionStatuses[0].value().empty
-        }
-        1 * mockJobManagement.requireMinimumPluginVersion('rundeck', '3.4')
-    }
-
-    def 'call rundeck trigger with all options'() {
-        when:
-        context.rundeck {
-            jobIdentifiers('2027ce89-7924-4ecf-a963-30090ada834f', 'my-project-name:main-group/sub-group/my-job-name')
-            executionStatuses('FAILED', 'ABORTED')
-        }
-
-        then:
-        with(context.triggerNodes[0]) {
-            name() == 'org.jenkinsci.plugins.rundeck.RundeckTrigger'
-            children().size() == 4
-            spec[0].value().empty
-            filterJobs[0].value() == true
-            with(jobsIdentifiers[0]) {
-                children().size() == 2
-                string[0].value() == '2027ce89-7924-4ecf-a963-30090ada834f'
-                string[1].value() == 'my-project-name:main-group/sub-group/my-job-name'
-            }
-            with(executionStatuses[0]) {
-                children().size() == 2
-                children().any { it.name() == 'string' && it.value() == 'FAILED' }
-                children().any { it.name() == 'string' && it.value() == 'ABORTED' }
-            }
-        }
-        1 * mockJobManagement.requireMinimumPluginVersion('rundeck', '3.4')
-    }
-
-    def 'call rundeck trigger with invalid execution status'() {
-        when:
-        context.rundeck {
-            executionStatuses('FOO')
-        }
-
-        then:
-        thrown(DslScriptException)
-    }
-
     def 'call bitbucket trigger'() {
         when:
         context.bitbucketPush()
@@ -360,36 +307,6 @@ class TriggerContextSpec extends Specification {
         then:
         with(context.triggerNodes[0]) {
             name() == 'com.dabsquared.gitlabjenkins.GitLabPushTrigger'
-            children().size() == 13
-            spec[0].value().empty
-            triggerOnPush[0].value() == true
-            triggerOnMergeRequest[0].value() == true
-            triggerOpenMergeRequestOnPush[0].value() == 'never'
-            ciSkip[0].value() == true
-            setBuildDescription[0].value() == true
-            addNoteOnMergeRequest[0].value() == true
-            addCiMessage[0].value() == false
-            addVoteOnMergeRequest[0].value() == true
-            allowAllBranches[0].value() == false
-            includeBranchesSpec[0].value().empty
-            excludeBranchesSpec[0].value().empty
-            acceptMergeRequestOnSuccess[0].value() == false
-        }
-        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.1.28')
-        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
-    }
-
-    def 'call gitlabPush trigger with no options, plugin version 1.2.x'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.0') >> true
-
-        when:
-        context.gitlabPush {
-        }
-
-        then:
-        with(context.triggerNodes[0]) {
-            name() == 'com.dabsquared.gitlabjenkins.GitLabPushTrigger'
             children().size() == 14
             spec[0].value().empty
             triggerOnPush[0].value() == true
@@ -400,20 +317,51 @@ class TriggerContextSpec extends Specification {
             addNoteOnMergeRequest[0].value() == true
             addCiMessage[0].value() == false
             addVoteOnMergeRequest[0].value() == true
-            branchFilterType[0].value() == 'all'
+            branchFilterType[0].value() == 'All'
             includeBranchesSpec[0].value().empty
             excludeBranchesSpec[0].value().empty
             targetBranchRegex[0].value().empty
             acceptMergeRequestOnSuccess[0].value() == false
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.1.28')
-        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
+    }
+
+    def 'call gitlabPush trigger with no options and newer plugin version'() {
+        setup:
+        mockJobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.4') >> true
+
+        when:
+        context.gitlabPush {
+        }
+
+        then:
+        with(context.triggerNodes[0]) {
+            name() == 'com.dabsquared.gitlabjenkins.GitLabPushTrigger'
+            children().size() == 17
+            spec[0].value().empty
+            triggerOnPush[0].value() == true
+            triggerOnMergeRequest[0].value() == true
+            triggerOpenMergeRequestOnPush[0].value() == 'never'
+            ciSkip[0].value() == true
+            setBuildDescription[0].value() == true
+            addNoteOnMergeRequest[0].value() == true
+            addCiMessage[0].value() == false
+            addVoteOnMergeRequest[0].value() == true
+            branchFilterType[0].value() == 'All'
+            includeBranchesSpec[0].value().empty
+            excludeBranchesSpec[0].value().empty
+            targetBranchRegex[0].value().empty
+            acceptMergeRequestOnSuccess[0].value() == false
+            triggerOnNoteRequest[0].value() == true
+            noteRegex[0].value() == 'Jenkins please retry a build'
+            skipWorkInProgressMergeRequest[0].value() == true
+        }
+        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
     }
 
     def 'call gitlabPush trigger with all options and name based filter'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.0') >> true
-
         when:
         context.gitlabPush {
             buildOnMergeRequestEvents(value)
@@ -442,23 +390,72 @@ class TriggerContextSpec extends Specification {
             addNoteOnMergeRequest[0].value() == value
             addCiMessage[0].value() == value
             addVoteOnMergeRequest[0].value() == value
-            branchFilterType[0].value() == 'nameBasedFilter'
+            branchFilterType[0].value() == 'NameBasedFilter'
             includeBranchesSpec[0].value() == 'include1,include2'
             excludeBranchesSpec[0].value() == 'exclude1,exclude2'
             targetBranchRegex[0].value().empty
             acceptMergeRequestOnSuccess[0].value() == value
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.1.28')
-        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
+        4 * mockJobManagement.logDeprecationWarning()
+
+        where:
+        value << [true, false]
+    }
+
+    def 'call gitlabPush trigger with all options, name based filter and newer plugin version'() {
+        setup:
+        mockJobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.4') >> true
+
+        when:
+        context.gitlabPush {
+            buildOnMergeRequestEvents(value)
+            buildOnPushEvents(value)
+            enableCiSkip(value)
+            setBuildDescription(value)
+            addNoteOnMergeRequest(value)
+            rebuildOpenMergeRequest('both')
+            addVoteOnMergeRequest(value)
+            useCiFeatures(value)
+            acceptMergeRequestOnSuccess(value)
+            includeBranches('include1,include2')
+            excludeBranches('exclude1,exclude2')
+            commentTrigger(null)
+            skipWorkInProgressMergeRequest(value)
+        }
+
+        then:
+        with(context.triggerNodes[0]) {
+            name() == 'com.dabsquared.gitlabjenkins.GitLabPushTrigger'
+            children().size() == 17
+            spec[0].value().empty
+            triggerOnPush[0].value() == value
+            triggerOnMergeRequest[0].value() == value
+            triggerOpenMergeRequestOnPush[0].value() == 'both'
+            ciSkip[0].value() == value
+            setBuildDescription[0].value() == value
+            addNoteOnMergeRequest[0].value() == value
+            addCiMessage[0].value() == value
+            addVoteOnMergeRequest[0].value() == value
+            branchFilterType[0].value() == 'NameBasedFilter'
+            includeBranchesSpec[0].value() == 'include1,include2'
+            excludeBranchesSpec[0].value() == 'exclude1,exclude2'
+            targetBranchRegex[0].value().empty
+            acceptMergeRequestOnSuccess[0].value() == value
+            triggerOnNoteRequest[0].value() == false
+            noteRegex[0].value() == ''
+            skipWorkInProgressMergeRequest[0].value() == value
+        }
+        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.2.0')
+        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
+        4 * mockJobManagement.logDeprecationWarning()
 
         where:
         value << [true, false]
     }
 
     def 'call gitlabPush trigger with all options and regex based filter'() {
-        setup:
-        mockJobManagement.isMinimumPluginVersionInstalled('gitlab-plugin', '1.2.0') >> true
-
         when:
         context.gitlabPush {
             buildOnMergeRequestEvents(value)
@@ -486,58 +483,15 @@ class TriggerContextSpec extends Specification {
             addNoteOnMergeRequest[0].value() == value
             addCiMessage[0].value() == value
             addVoteOnMergeRequest[0].value() == value
-            branchFilterType[0].value() == 'regexBasedFilter'
+            branchFilterType[0].value() == 'RegexBasedFilter'
             includeBranchesSpec[0].value().empty
             excludeBranchesSpec[0].value().empty
             targetBranchRegex[0].value() == '(.*debug.*|.*release.*)'
             acceptMergeRequestOnSuccess[0].value() == value
         }
-        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.1.28')
         1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.2.0')
-        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
-
-        where:
-        value << [true, false]
-    }
-
-    def 'call gitlabPush trigger with all options, plugin version older than 1.2.0'() {
-        when:
-        context.gitlabPush {
-            buildOnMergeRequestEvents(value)
-            buildOnPushEvents(value)
-            enableCiSkip(value)
-            setBuildDescription(value)
-            addNoteOnMergeRequest(value)
-            rebuildOpenMergeRequest('both')
-            addVoteOnMergeRequest(value)
-            useCiFeatures(value)
-            acceptMergeRequestOnSuccess(value)
-            allowAllBranches(value)
-            includeBranches('include1,include2')
-            excludeBranches('exclude1,exclude2')
-        }
-
-        then:
-        with(context.triggerNodes[0]) {
-            name() == 'com.dabsquared.gitlabjenkins.GitLabPushTrigger'
-            children().size() == 13
-            spec[0].value().empty
-            triggerOnPush[0].value() == value
-            triggerOnMergeRequest[0].value() == value
-            triggerOpenMergeRequestOnPush[0].value() == 'both'
-            ciSkip[0].value() == value
-            setBuildDescription[0].value() == value
-            addNoteOnMergeRequest[0].value() == value
-            addCiMessage[0].value() == value
-            addVoteOnMergeRequest[0].value() == value
-            allowAllBranches[0].value() == value
-            includeBranchesSpec[0].value() == 'include1,include2'
-            excludeBranchesSpec[0].value() == 'exclude1,exclude2'
-            acceptMergeRequestOnSuccess[0].value() == value
-        }
-        1 * mockJobManagement.requireMinimumPluginVersion('gitlab-plugin', '1.1.28')
-        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.2.0')
-        1 * mockJobManagement.logDeprecationWarning()
+        1 * mockJobManagement.logPluginDeprecationWarning('gitlab-plugin', '1.4.0')
+        4 * mockJobManagement.logDeprecationWarning()
 
         where:
         value << [true, false]

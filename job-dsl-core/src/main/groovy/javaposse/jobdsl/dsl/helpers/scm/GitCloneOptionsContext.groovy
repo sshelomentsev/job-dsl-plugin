@@ -1,17 +1,33 @@
 package javaposse.jobdsl.dsl.helpers.scm
 
-import javaposse.jobdsl.dsl.Context
+import javaposse.jobdsl.dsl.AbstractContext
+import javaposse.jobdsl.dsl.JobManagement
 
-class GitCloneOptionsContext implements Context {
+class GitCloneOptionsContext extends AbstractContext {
     boolean shallow
+    boolean noTags
     String reference
     Integer timeout
+    boolean honorRefspec
+
+    GitCloneOptionsContext(JobManagement jobManagement) {
+        super(jobManagement)
+    }
 
     /**
      * Perform shallow clone, so that Git will not download history of the project. Defaults to {@code false}.
      */
     void shallow(boolean shallow = true) {
         this.shallow = shallow
+    }
+
+    /**
+     * Do not check out tags. Defaults to {@code false}.
+     *
+     * @since 1.64
+     */
+    void noTags(boolean noTags = true) {
+        this.noTags = noTags
     }
 
     /**
@@ -26,5 +42,14 @@ class GitCloneOptionsContext implements Context {
      */
     void timeout(Integer timeout) {
         this.timeout = timeout
+    }
+
+    /**
+     * Honor refspec on initial clone.
+     *
+     * @since 1.52
+     */
+    void honorRefspec(boolean honorRefspec = true) {
+        this.honorRefspec = honorRefspec
     }
 }

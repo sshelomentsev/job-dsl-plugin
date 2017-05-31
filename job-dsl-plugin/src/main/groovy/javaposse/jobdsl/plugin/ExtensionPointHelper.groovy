@@ -2,6 +2,7 @@ package javaposse.jobdsl.plugin
 
 import javaposse.jobdsl.dsl.ContextHelper
 import javaposse.jobdsl.dsl.ExtensibleContext
+import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.plugin.structs.DescribableContext
 import org.apache.commons.lang.ClassUtils
 import org.jenkinsci.plugins.structs.describable.DescribableModel
@@ -63,7 +64,10 @@ class ExtensionPointHelper {
     }
 
     interface DslExtension {
-        Object call(DslEnvironment environment, Object[] args) throws InvocationTargetException
+        Object call(DslEnvironment environment, JobManagement jobManagement, Object[] args)
+                throws InvocationTargetException
+
+        boolean isDeprecated()
     }
 
     static class ExtensionPointMethod implements DslExtension {
@@ -81,7 +85,12 @@ class ExtensionPointHelper {
         }
 
         @Override
-        Object call(DslEnvironment environment, Object[] args) {
+        boolean isDeprecated() {
+            method.getAnnotation(Deprecated) != null
+        }
+
+        @Override
+        Object call(DslEnvironment environment, JobManagement jobManagement, Object[] args) {
             Class<?>[] parameterTypes = method.parameterTypes
             Object[] processedArgs = new Object[parameterTypes.length]
             int j = 0
@@ -100,12 +109,17 @@ class ExtensionPointHelper {
         }
 
         @Override
-        Object call(DslEnvironment environment, Object[] args) {
-            DescribableContext delegate = new DescribableContext(describableModel)
+        Object call(DslEnvironment environment, JobManagement jobManagement, Object[] args) {
+            DescribableContext delegate = new DescribableContext(describableModel, jobManagement)
             if (args.length == 1 && args[0] instanceof Closure) {
                 ContextHelper.executeInContext((Closure) args[0], delegate)
             }
             delegate.createInstance()
+        }
+
+        @Override
+        boolean isDeprecated() {
+            describableModel.deprecated
         }
 
         @Override

@@ -39,6 +39,9 @@ class ScmContext extends AbstractExtensibleContext {
 
     /**
      * Adds a Mercurial SCM source.
+     *
+     * The closure parameter expects a configure block for direct manipulation of the generated XML. The {@code scm}
+     * node is passed into the configure block.
      */
     @RequiresPlugin(id = 'mercurial', minimumVersion = '1.50.1')
     void hg(String url, String branch = null, Closure configure = null) {
@@ -85,24 +88,13 @@ class ScmContext extends AbstractExtensibleContext {
      *
      * @since 1.20
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void git(@DslContext(GitContext) Closure gitClosure) {
         GitContext gitContext = new GitContext(jobManagement, item)
         executeInContext(gitClosure, gitContext)
 
         if (gitContext.branches.empty) {
             gitContext.branches << '**'
-        }
-
-        if (gitContext.shallowClone || gitContext.reference || gitContext.cloneTimeout) {
-            gitContext.extensionContext.extensions << new NodeBuilder().
-                    'hudson.plugins.git.extensions.impl.CloneOption' {
-                shallow(gitContext.shallowClone)
-                reference(gitContext.reference)
-                if (gitContext.cloneTimeout) {
-                    timeout(gitContext.cloneTimeout)
-                }
-            }
         }
 
         Node gitNode = new NodeBuilder().scm(class: 'hudson.plugins.git.GitSCM') {
@@ -114,27 +106,9 @@ class ScmContext extends AbstractExtensibleContext {
                     }
                 }
             }
-            configVersion '2'
-            disableSubmodules 'false'
-            recursiveSubmodules gitContext.recursiveSubmodules
-            if (gitContext.trackingSubmodules) {
-                trackingSubmodules gitContext.trackingSubmodules
-            }
-            doGenerateSubmoduleConfigurations 'false'
-            authorOrCommitter 'false'
-            clean gitContext.clean
-            wipeOutWorkspace gitContext.wipeOutWorkspace
-            pruneBranches gitContext.pruneBranches
-            remotePoll gitContext.remotePoll
-            ignoreNotifyCommit gitContext.ignoreNotifyCommit
-            gitTool 'Default'
-            if (gitContext.relativeTargetDir) {
-                relativeTargetDir gitContext.relativeTargetDir
-            }
-            if (gitContext.localBranch) {
-                localBranch gitContext.localBranch
-            }
-            skipTag !gitContext.createTag
+            configVersion(2)
+            doGenerateSubmoduleConfigurations(false)
+            gitTool('Default')
             if (gitContext.extensionContext.extensions) {
                 extensions(gitContext.extensionContext.extensions)
             }
@@ -142,10 +116,6 @@ class ScmContext extends AbstractExtensibleContext {
 
         if (gitContext.gitBrowserContext.browser) {
             gitNode.children().add(gitContext.gitBrowserContext.browser)
-        }
-
-        if (gitContext.strategyContext.buildChooser) {
-            gitNode.children().add(gitContext.strategyContext.buildChooser)
         }
 
         ContextHelper.executeConfigureBlock(gitNode, gitContext.configureBlock)
@@ -159,7 +129,7 @@ class ScmContext extends AbstractExtensibleContext {
      * The closure parameter expects a configure block for direct manipulation of the generated XML. The {@code scm}
      * node is passed into the configure block.
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void git(String url, Closure configure = null) {
         git(url, null, configure)
     }
@@ -170,7 +140,7 @@ class ScmContext extends AbstractExtensibleContext {
      * The closure parameter expects a configure block for direct manipulation of the generated XML. The {@code scm}
      * node is passed into the configure block.
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void git(String url, String branch, Closure configure = null) {
         git {
             remote {
@@ -194,7 +164,7 @@ class ScmContext extends AbstractExtensibleContext {
      * @since 1.15
      * @see #github(java.lang.String, java.lang.String, java.lang.String, java.lang.String, groovy.lang.Closure)
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void github(String ownerAndProject, String branch = null, String protocol = 'https', Closure closure) {
         github(ownerAndProject, branch, protocol, 'github.com', closure)
     }
@@ -213,7 +183,7 @@ class ScmContext extends AbstractExtensibleContext {
      * @since 1.15
      * @see <a href="https://github.com/jenkinsci/job-dsl-plugin/wiki/The-Configure-Block">The Configure Block</a>
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void github(String ownerAndProject, String branch = null, String protocol = 'https', String host = 'github.com',
                 Closure closure = null) {
         git {
@@ -284,17 +254,6 @@ class ScmContext extends AbstractExtensibleContext {
         ContextHelper.executeConfigureBlock(svnNode, svnContext.configureBlock)
 
         scmNodes << svnNode
-    }
-
-    /**
-     * Add Perforce SCM source.
-     *
-     * @see #p4(java.lang.String, java.lang.String, java.lang.String, groovy.lang.Closure)
-     */
-    @RequiresPlugin(id = 'perforce')
-    @Deprecated
-    void p4(String viewspec, Closure configure = null) {
-        p4(viewspec, 'rolem', '', configure)
     }
 
     /**
