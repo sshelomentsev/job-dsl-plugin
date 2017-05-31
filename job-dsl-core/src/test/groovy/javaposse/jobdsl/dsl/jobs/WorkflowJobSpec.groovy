@@ -6,7 +6,7 @@ import spock.lang.Specification
 
 class WorkflowJobSpec extends Specification {
     private final JobManagement jobManagement = Mock(JobManagement)
-    private final WorkflowJob job = new WorkflowJob(jobManagement)
+    private final WorkflowJob job = new WorkflowJob(jobManagement, 'test')
 
     def 'construct simple workflow job and generate xml from it'() {
         when:
@@ -66,7 +66,7 @@ class WorkflowJobSpec extends Specification {
             attribute('class') == 'org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition'
             children().size() == 2
             scm[0].attribute('class') == 'hudson.plugins.git.GitSCM'
-            scm[0].children().size() == 15
+            scm[0].children().size() == 6
             scriptPath[0].value() == 'JenkinsFile'
         }
         1 * jobManagement.requireMinimumPluginVersion('workflow-cps', '1.2')
@@ -88,7 +88,7 @@ class WorkflowJobSpec extends Specification {
             attribute('class') == 'org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition'
             children().size() == 2
             scm[0].attribute('class') == 'hudson.plugins.git.GitSCM'
-            scm[0].children().size() == 15
+            scm[0].children().size() == 6
             scriptPath[0].value() == '.jenkins/Jenkinsfile'
         }
         1 * jobManagement.requireMinimumPluginVersion('workflow-cps', '1.2')

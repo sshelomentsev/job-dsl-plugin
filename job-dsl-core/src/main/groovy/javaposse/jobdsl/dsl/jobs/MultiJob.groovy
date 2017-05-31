@@ -7,8 +7,8 @@ import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.dsl.helpers.step.MultiJobStepContext
 
 class MultiJob extends Job {
-    MultiJob(JobManagement jobManagement) {
-        super(jobManagement)
+    MultiJob(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     void steps(@DslContext(MultiJobStepContext) Closure closure) {

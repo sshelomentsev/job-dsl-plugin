@@ -1,12 +1,10 @@
 package javaposse.jobdsl.dsl
 
-import hudson.util.VersionNumber
-
 /**
  * Abstract base class for all non-Jenkins implementations of {@link JobManagement}.
  */
 abstract class MockJobManagement extends AbstractJobManagement {
-    final Map<String, String> parameters = [:]
+    final Map<String, Object> parameters = [:]
     final Map<String, List<String>> permissions = [
             'hudson.security.AuthorizationMatrixProperty': [
                     'hudson.model.Item.Delete',
@@ -33,6 +31,7 @@ abstract class MockJobManagement extends AbstractJobManagement {
     }
 
     @Override
+    @Deprecated
     String createOrUpdateConfigFile(ConfigFile configFile, boolean ignoreExisting) {
         throw new UnsupportedOperationException()
     }
@@ -73,15 +72,8 @@ abstract class MockJobManagement extends AbstractJobManagement {
     }
 
     @Override
-    @Deprecated
-    VersionNumber getPluginVersion(String pluginShortName) {
-        null
-    }
-
-    @Override
-    @Deprecated
-    VersionNumber getJenkinsVersion() {
-        new VersionNumber('1.565')
+    boolean isMinimumCoreVersion(String version) {
+        false
     }
 
     @Override
@@ -90,6 +82,7 @@ abstract class MockJobManagement extends AbstractJobManagement {
     }
 
     @Override
+    @Deprecated
     String getConfigFileId(ConfigFileType type, String name) {
         null
     }

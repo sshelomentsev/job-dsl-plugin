@@ -13,7 +13,15 @@ App.Settings = Marionette.Object.extend({
     },
 
     isPluginExcluded: function(name) {
-        return _.contains(this.excludedPlugins, name);
+        if (name) {
+            return _.contains(this.excludedPlugins, name);
+        } else {
+            return this.excludedPlugins.length !== 0;
+        }
+    },
+
+    isPluginsExcluded: function(plugins) {
+        return _.chain(plugins).pluck('name').some(this.isPluginExcluded.bind(this)).value();
     },
 
     setPluginExcluded: function(name, isExcluded) {

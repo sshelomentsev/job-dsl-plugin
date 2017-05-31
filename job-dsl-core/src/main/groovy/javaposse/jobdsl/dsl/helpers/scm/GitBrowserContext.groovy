@@ -2,7 +2,6 @@ package javaposse.jobdsl.dsl.helpers.scm
 
 import javaposse.jobdsl.dsl.AbstractContext
 import javaposse.jobdsl.dsl.JobManagement
-import javaposse.jobdsl.dsl.RequiresPlugin
 
 class GitBrowserContext extends AbstractContext {
     Node browser
@@ -49,7 +48,6 @@ class GitBrowserContext extends AbstractContext {
      *
      * @since 1.44
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.3')
     void gitiles(String url) {
         browser = NodeBuilder.newInstance().browser(class: 'hudson.plugins.git.browser.Gitiles') {
             delegate.url(url)
@@ -63,6 +61,17 @@ class GitBrowserContext extends AbstractContext {
      */
     void gitWeb(String url) {
         browser = NodeBuilder.newInstance().browser(class: 'hudson.plugins.git.browser.GitWeb') {
+            delegate.url(url)
+        }
+    }
+
+    /**
+     * Use Gogs as repository browser.
+     *
+     * @since 1.64
+     */
+    void gogs(String url) {
+        browser = NodeBuilder.newInstance().browser(class: 'hudson.plugins.git.browser.GogsGit') {
             delegate.url(url)
         }
     }

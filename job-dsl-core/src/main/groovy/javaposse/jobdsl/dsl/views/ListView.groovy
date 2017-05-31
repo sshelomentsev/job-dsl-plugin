@@ -11,8 +11,8 @@ import static javaposse.jobdsl.dsl.Preconditions.checkNotNull
 class ListView extends View {
     private final JobsContext jobsContext = new JobsContext()
 
-    ListView(JobManagement jobManagement) {
-        super(jobManagement)
+    ListView(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     /**

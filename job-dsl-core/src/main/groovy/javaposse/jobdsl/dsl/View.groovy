@@ -6,10 +6,11 @@ package javaposse.jobdsl.dsl
 abstract class View extends AbstractContext {
     private final List<Closure> configureBlocks = []
 
-    String name
+    final String name
 
-    protected View(JobManagement jobManagement) {
+    protected View(JobManagement jobManagement, String name) {
         super(jobManagement)
+        this.name = name
     }
 
     /**
@@ -70,10 +71,5 @@ abstract class View extends AbstractContext {
         Node root = new XmlParser().parse(this.class.getResourceAsStream("${this.class.simpleName}-template.xml"))
         ContextHelper.executeConfigureBlocks(root, configureBlocks)
         root
-    }
-
-    @Deprecated
-    protected void execute(Closure rootClosure) {
-        configure(rootClosure)
     }
 }

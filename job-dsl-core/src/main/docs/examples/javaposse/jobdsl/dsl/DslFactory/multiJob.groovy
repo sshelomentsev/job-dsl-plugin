@@ -44,7 +44,6 @@ multiJob('example') {
                     subversionRevision()
                     gitRevision()
                     predefinedProp('prop1', 'value1')
-                    nodeLabel('lParam', 'my_nodes')
                 }
                 configure { phaseJobConfig ->
                     phaseJobConfig / enableCondition << 'true'

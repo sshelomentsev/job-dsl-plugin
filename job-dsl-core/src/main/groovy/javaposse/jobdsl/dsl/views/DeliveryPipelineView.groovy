@@ -9,8 +9,8 @@ import javaposse.jobdsl.dsl.View
 import static javaposse.jobdsl.dsl.ContextHelper.executeInContext
 
 class DeliveryPipelineView extends View {
-    DeliveryPipelineView(JobManagement jobManagement) {
-        super(jobManagement)
+    DeliveryPipelineView(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     @Override
@@ -105,6 +105,30 @@ class DeliveryPipelineView extends View {
     }
 
     /**
+     * Show test results in view. Defaults to {@code false}.
+     *
+     * @since 1.48
+     */
+    @RequiresPlugin(id = 'delivery-pipeline-plugin', minimumVersion = '0.9.6')
+    void showTestResults(boolean value = true) {
+        configure {
+            it / methodMissing('showTestResults', value)
+        }
+    }
+
+    /**
+     * Use defined theme for pipeline. Defaults to {@code 'default'}.
+     *
+     * @since 1.48
+     */
+    @RequiresPlugin(id = 'delivery-pipeline-plugin', minimumVersion = '0.9.10')
+    void useTheme(String value) {
+        configure {
+            it / methodMissing('theme', value)
+        }
+    }
+
+    /**
      * Shows the total build time of a pipeline. Defaults to {@code false}.
      *
      * @since 1.38
@@ -167,6 +191,18 @@ class DeliveryPipelineView extends View {
     }
 
     /**
+     * Enable pagination to allow navigation to older pipeline runs which are not displayed on the first page.
+     *
+     * @since 1.48
+     */
+    @RequiresPlugin(id = 'delivery-pipeline-plugin', minimumVersion = '0.9.10')
+    void enablePaging(boolean value = true) {
+        configure {
+            it / methodMissing('pagingEnabled', value)
+        }
+    }
+
+    /**
      * Defines pipelines by either specifying names and start jobs or by regular expressions. Both variants can be
      * called multiple times to add different pipelines to the view.
      */
@@ -192,7 +228,8 @@ class DeliveryPipelineView extends View {
     static enum Sorting {
         NONE('none'),
         TITLE('se.diabol.jenkins.pipeline.sort.NameComparator'),
-        LAST_ACTIVITY('se.diabol.jenkins.pipeline.sort.LatestActivityComparator')
+        LAST_ACTIVITY('se.diabol.jenkins.pipeline.sort.LatestActivityComparator'),
+        FAILED_FIRST('se.diabol.jenkins.pipeline.sort.FailedJobComparator')
 
         final String value
 

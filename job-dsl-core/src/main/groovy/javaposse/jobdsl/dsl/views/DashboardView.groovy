@@ -7,8 +7,8 @@ import javaposse.jobdsl.dsl.views.portlets.DashboardPortletContext
 import static javaposse.jobdsl.dsl.ContextHelper.executeInContext
 
 class DashboardView extends ListView {
-    DashboardView(JobManagement jobManagement) {
-        super(jobManagement)
+    DashboardView(JobManagement jobManagement, String name) {
+        super(jobManagement, name)
     }
 
     /**
@@ -40,7 +40,7 @@ class DashboardView extends ListView {
     }
 
     protected void addPortlets(String elementName, Closure closure) {
-        DashboardPortletContext context = new DashboardPortletContext()
+        DashboardPortletContext context = new DashboardPortletContext(jobManagement)
         executeInContext(closure, context)
 
         configure {

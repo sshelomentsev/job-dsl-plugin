@@ -42,8 +42,7 @@ class MemoryJobManagementSpec extends Specification {
 
     def 'createOrUpdateConfig complains about missing config'(String config) {
         setup:
-        Item item = Mock(Item)
-        item.name >> 'foo'
+        Item item = Mock(Item, constructorArgs: [jobManagement, 'foo'])
         item.xml >> config
 
         when:
@@ -58,8 +57,7 @@ class MemoryJobManagementSpec extends Specification {
 
     def 'createOrUpdateConfig creates config'() {
         setup:
-        Item item = Mock(Item)
-        item.name >> 'foo'
+        Item item = Mock(Item, constructorArgs: [jobManagement, 'foo'])
         item.xml >> 'bar'
 
         when:
@@ -182,14 +180,6 @@ class MemoryJobManagementSpec extends Specification {
 
         then:
         !result
-    }
-
-    def 'getPluginVersion returns null'() {
-        when:
-        String id = jobManagement.getPluginVersion('foo')
-
-        then:
-        id == null
     }
 
     def 'getVSphereCloudHash returns null'() {

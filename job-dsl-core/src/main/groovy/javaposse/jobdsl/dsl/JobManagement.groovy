@@ -1,7 +1,5 @@
 package javaposse.jobdsl.dsl
 
-import hudson.util.VersionNumber
-
 /**
  * Interface to manage jobs, which the DSL needs to do.
  */
@@ -55,6 +53,7 @@ interface JobManagement {
      * @return the id of the created or updated config file
      * @since 1.25
      */
+    @Deprecated
     String createOrUpdateConfigFile(ConfigFile configFile, boolean ignoreExisting)
 
     /**
@@ -126,7 +125,7 @@ interface JobManagement {
     /**
      * Map of variables that should be available to the script.
      */
-    Map<String, String> getParameters()
+    Map<String, Object> getParameters()
 
     /**
      * Logs a deprecation warning for the calling method.
@@ -198,18 +197,18 @@ interface JobManagement {
     boolean isMinimumPluginVersionInstalled(String pluginShortName, String version)
 
     /**
-     * Returns the currently installed version of the given plugin or <code>null<code> if the plugin is not installed.
+     * Returns {@code true} if the currently running version of Jenkins is equal to or greater than the specified
+     * version.
+     *
+     * @since 1.54
      */
-    @Deprecated
-    VersionNumber getPluginVersion(String pluginShortName)
+    boolean isMinimumCoreVersion(String version)
 
     /**
      * Returns the version of Jenkins.
      *
      * @since 1.33
      */
-    @Deprecated
-    VersionNumber getJenkinsVersion()
 
     /**
      * Return the hash of the vSphere cloud with the given name.
@@ -228,6 +227,7 @@ interface JobManagement {
      *         be found
      * @since 1.25
      */
+    @Deprecated
     String getConfigFileId(ConfigFileType type, String name)
 
     /**

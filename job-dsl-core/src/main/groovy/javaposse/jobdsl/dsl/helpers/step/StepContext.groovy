@@ -124,11 +124,15 @@ class StepContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'gradle', minimumVersion = '1.23')
     void gradle(@DslContext(GradleContext) Closure gradleClosure) {
+        jobManagement.logPluginDeprecationWarning('gradle', '1.26')
+
         GradleContext gradleContext = new GradleContext(jobManagement)
         ContextHelper.executeInContext(gradleClosure, gradleContext)
 
         Node gradleNode = new NodeBuilder().'hudson.plugins.gradle.Gradle' {
-            description gradleContext.description
+            if (!jobManagement.isMinimumPluginVersionInstalled('gradle', '1.26')) {
+                description gradleContext.description
+            }
             switches gradleContext.switches.join(' ')
             tasks gradleContext.tasks.join(' ')
             rootBuildScriptDir gradleContext.rootBuildScriptDir
@@ -138,6 +142,9 @@ class StepContext extends AbstractExtensibleContext {
             makeExecutable gradleContext.makeExecutable
             fromRootBuildScriptDir gradleContext.fromRootBuildScriptDir
             useWorkspaceAsHome gradleContext.useWorkspaceAsHome
+            if (jobManagement.isMinimumPluginVersionInstalled('gradle', '1.25')) {
+                passAsProperties gradleContext.passAsProperties
+            }
         }
 
         ContextHelper.executeConfigureBlock(gradleNode, gradleContext.configureBlock)
@@ -403,7 +410,6 @@ class StepContext extends AbstractExtensibleContext {
      *
      * @since 1.20
      */
-    @RequiresPlugin(id = 'maven-plugin', minimumVersion = '2.3')
     void maven(@DslContext(MavenContext) Closure closure) {
         MavenContext mavenContext = new MavenContext(jobManagement)
         ContextHelper.executeInContext(closure, mavenContext)
@@ -429,6 +435,9 @@ class StepContext extends AbstractExtensibleContext {
                     settingsConfigId(mavenContext.providedGlobalSettingsId)
                 }
             }
+            if (jobManagement.isMinimumCoreVersion('2.12')) {
+                injectBuildVariables(mavenContext.injectBuildVariables)
+            }
         }
 
         ContextHelper.executeConfigureBlock(mavenNode, mavenContext.configureBlock)
@@ -442,7 +451,6 @@ class StepContext extends AbstractExtensibleContext {
      * The closure parameter expects a configure block for direct manipulation of the generated XML. The
      * {@code hudson.tasks.Maven} node is passed into the configure block.
      */
-    @RequiresPlugin(id = 'maven-plugin', minimumVersion = '2.3')
     void maven(String targets = null, String pom = null, Closure configure = null) {
         maven {
             delegate.goals(targets)
@@ -455,6 +463,7 @@ class StepContext extends AbstractExtensibleContext {
      * Builds a Grails project.
      */
     @RequiresPlugin(id = 'grails')
+    @Deprecated
     void grails(@DslContext(GrailsContext) Closure grailsClosure) {
         grails null, false, grailsClosure
     }
@@ -463,6 +472,7 @@ class StepContext extends AbstractExtensibleContext {
      * Builds a Grails project.
      */
     @RequiresPlugin(id = 'grails')
+    @Deprecated
     void grails(String targets, @DslContext(GrailsContext) Closure grailsClosure) {
         grails targets, false, grailsClosure
     }
@@ -471,6 +481,7 @@ class StepContext extends AbstractExtensibleContext {
      * Builds a Grails project.
      */
     @RequiresPlugin(id = 'grails')
+    @Deprecated
     void grails(String targets = null, boolean useWrapper = false,
                 @DslContext(GrailsContext) Closure grailsClosure = null) {
         GrailsContext grailsContext = new GrailsContext(
@@ -638,10 +649,12 @@ class StepContext extends AbstractExtensibleContext {
     @RequiresPlugin(id = 'Parameterized-Remote-Trigger')
     void remoteTrigger(String remoteJenkins, String jobName,
                        @DslContext(ParameterizedRemoteTriggerContext) Closure closure = null) {
+        jobManagement.logPluginDeprecationWarning('Parameterized-Remote-Trigger', '2.0')
+
         Preconditions.checkNotNullOrEmpty(remoteJenkins, 'remoteJenkins must be specified')
         Preconditions.checkNotNullOrEmpty(jobName, 'jobName must be specified')
 
-        ParameterizedRemoteTriggerContext context = new ParameterizedRemoteTriggerContext()
+        ParameterizedRemoteTriggerContext context = new ParameterizedRemoteTriggerContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
 
         List<String> jobParameters = context.parameters.collect { String key, String value -> "$key=$value" }
@@ -664,9 +677,13 @@ class StepContext extends AbstractExtensibleContext {
                     }
                 }
             }
-            overrideAuth(false)
+            overrideAuth(context.credentialsIds as boolean)
             auth {
                 'org.jenkinsci.plugins.ParameterizedRemoteTrigger.Auth' {
+                    if (context.credentialsIds) {
+                        authType('credentialsPlugin')
+                        creds(context.credentialsIds)
+                    }
                     NONE('none')
                     API__TOKEN('apiToken')
                     CREDENTIALS__PLUGIN('credentialsPlugin')
@@ -685,7 +702,7 @@ class StepContext extends AbstractExtensibleContext {
      *
      * @since 1.24
      */
-    @RequiresPlugin(id = 'Exclusion')
+    @RequiresPlugin(id = 'Exclusion', minimumVersion = '0.12')
     void criticalBlock(@DslContext(StepContext) Closure closure) {
         StepContext stepContext = new StepContext(jobManagement, item)
         ContextHelper.executeInContext(closure, stepContext)
@@ -841,11 +858,14 @@ class StepContext extends AbstractExtensibleContext {
      */
     @RequiresPlugin(id = 'http_request')
     void httpRequest(String requestUrl, @DslContext(HttpRequestContext) Closure closure = null) {
-        HttpRequestContext context = new HttpRequestContext()
+        HttpRequestContext context = new HttpRequestContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
 
         stepNodes << new NodeBuilder().'jenkins.plugins.http__request.HttpRequest' {
             url(requestUrl)
+            if (context.passBuildParameters != null) {
+                passBuildParameters(context.passBuildParameters)
+            }
             if (context.httpMode != null) {
                 httpMode(context.httpMode)
             }
@@ -969,10 +989,8 @@ class StepContext extends AbstractExtensibleContext {
      *
      * @since 1.39
      */
-    @RequiresPlugin(id = 'docker-build-publish', minimumVersion = '1.0')
+    @RequiresPlugin(id = 'docker-build-publish', minimumVersion = '1.2')
     void dockerBuildAndPublish(@DslContext(DockerBuildAndPublishContext) Closure closure) {
-        jobManagement.logPluginDeprecationWarning('docker-build-publish', '1.2')
-
         DockerBuildAndPublishContext context = new DockerBuildAndPublishContext(jobManagement)
         ContextHelper.executeInContext(closure, context)
 
@@ -1003,11 +1021,9 @@ class StepContext extends AbstractExtensibleContext {
             skipPush(context.skipPush)
             createFingerprint(context.createFingerprints)
             skipTagLatest(context.skipTagAsLatest)
-            if (jobManagement.isMinimumPluginVersionInstalled('docker-build-publish', '1.2')) {
-                buildContext(context.buildContext ?: '')
-                buildAdditionalArgs(context.additionalBuildArgs ?: '')
-                forceTag(context.forceTag)
-            }
+            buildContext(context.buildContext ?: '')
+            buildAdditionalArgs(context.additionalBuildArgs ?: '')
+            forceTag(context.forceTag)
         }
     }
 
@@ -1017,6 +1033,7 @@ class StepContext extends AbstractExtensibleContext {
      * @since 1.39
      */
     @RequiresPlugin(id = 'artifactdeployer', minimumVersion = '0.33')
+    @Deprecated
     void artifactDeployer(@DslContext(ArtifactDeployerContext) Closure closure) {
         ArtifactDeployerContext context = new ArtifactDeployerContext()
         ContextHelper.executeInContext(closure, context)
@@ -1045,15 +1062,14 @@ class StepContext extends AbstractExtensibleContext {
      * @since 1.40
      */
     @RequiresPlugin(id = 'managed-scripts', minimumVersion = '1.2.1')
-    void managedScript(String scriptName, @DslContext(ManagedScriptContext) Closure closure = null) {
-        String scriptId = jobManagement.getConfigFileId(ConfigFileType.ManagedScript, scriptName)
-        Preconditions.checkNotNull(scriptId, "managed script with name '${scriptName}' not found")
+    void managedScript(String scriptIdOrName, @DslContext(ManagedScriptContext) Closure closure = null) {
+        String scriptId = jobManagement.getConfigFileId(ConfigFileType.ManagedScript, scriptIdOrName)
 
         ManagedScriptContext context = new ManagedScriptContext()
         ContextHelper.executeInContext(closure, context)
 
         stepNodes << new NodeBuilder().'org.jenkinsci.plugins.managedscripts.ScriptBuildStep' {
-            buildStepId(scriptId)
+            buildStepId(scriptId ?: scriptIdOrName)
             buildStepArgs {
                 context.arguments.each {
                     string(it)

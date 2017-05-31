@@ -1,5 +1,6 @@
 package javaposse.jobdsl.dsl.helpers.common
 
+import javaposse.jobdsl.dsl.ContextType
 import javaposse.jobdsl.dsl.Item
 import javaposse.jobdsl.dsl.JobManagement
 import javaposse.jobdsl.dsl.RequiresPlugin
@@ -8,6 +9,7 @@ import javaposse.jobdsl.dsl.AbstractExtensibleContext
 /**
  * @since 1.38
  */
+@ContextType('hudson.plugins.parameterizedtrigger.AbstractBuildParameters')
 class DownstreamTriggerParameterContext extends AbstractExtensibleContext {
     Map<String, Boolean> booleanParams = [:]
     boolean sameNode
@@ -82,7 +84,7 @@ class DownstreamTriggerParameterContext extends AbstractExtensibleContext {
     /**
      * Passes the Git commit that was used in this build to the downstream builds.
      */
-    @RequiresPlugin(id = 'git', minimumVersion = '2.2.6')
+    @RequiresPlugin(id = 'git', minimumVersion = '2.5.3')
     void gitRevision(boolean combineQueuedCommits = false) {
         this.gitRevision = true
         this.combineQueuedCommits = combineQueuedCommits

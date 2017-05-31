@@ -63,12 +63,17 @@ The `configure` method can be stated multiple times and configure blocks are run
 See the [API Viewer](https://jenkinsci.github.io/job-dsl-plugin/) for details about the configure blocks supported by
 DSL methods.
 
+[This article](http://www.devexp.eu/2014/10/26/use-unsupported-jenkins-plugins-with-jenkins-dsl/) provides a
+step-by-step tutorial on how to create a configure block.
+
 # Transforming XML
 
-All standard documentation for Node applies here, but transforming XML via Node is no fun, and quite ugly. The general
-groovy use-cases are to consume this structure or build it up via NodeBuilder. Use the samples below to help navigate
-the Jenkins XML, but keep in mind that the actual syntax is Groovy syntax:
-http://groovy.codehaus.org/Updating+XML+with+XmlParser.
+All standard documentation for [Node](http://docs.groovy-lang.org/latest/html/gapi/groovy/util/Node.html) applies here,
+but transforming XML via Node is no fun, and quite ugly. The general
+Groovy use-cases are to consume this structure or build it up via
+[NodeBuilder](http://docs.groovy-lang.org/latest/html/gapi/groovy/util/NodeBuilder.html). Use the samples below to help
+navigate the Jenkins XML, but keep in mind that the actual syntax is Groovy syntax. See
+[Processing XML](http://groovy-lang.org/processing-xml.html) for more information about manipulating XML with Groovy.
 
 Things to keep in mind:
 
@@ -96,6 +101,9 @@ To ease navigation, two key operators have been overridden. Try to use them as m
   in the order of operation, so you need to wrap parenthesis around some operations.
 * `<<` - appends as a child. If a Node is provided, it is directly added. A string is created as a node. A closure is
   processed like a NodeBuilder, allowing many nodes to be appended.
+
+Note that these operators are not available when Jenkins security is enabled and the DSL script is running in the
+restricted sandbox, use the [Node](http://docs.groovy-lang.org/latest/html/gapi/groovy/util/Node.html) API instead.
 
 # Reusable Configure Blocks
 
@@ -190,6 +198,73 @@ job('example') {
     }
 }
 ```
+
+## Append (<<) Not Working With Attributes
+
+The behavior of the `/` operator changes when specifying attributes on the right side. In this case the `/` does not
+only find or create the element on the right side of the operator, but also replaces children and attributes of the node
+on the left side with children and attributes from the node on the right side.
+
+The following example demonstrates the problem:
+
+```groovy
+job('example') {
+    configure {
+        it / scm(class: 'org.MyScm') << 'aChild' {
+            serverUrl('http://example.org/product-a')
+        }
+        it / scm(class: 'org.MyScm') << 'aChild' {
+            serverUrl('http://example.org/product-b')
+        }
+    }
+}
+```
+
+It will not generate two `aChild` elements within the `scm` element, but only one since the second `/` operator will
+replace the content appended above. The outcome looks like this:
+
+```xml
+<project>
+   <scm class='org.MyScm'>
+        <aChild>
+            <serverUrl>http://example.org/product-a</serverUrl>
+        </aChild>
+    </scm>
+</project>
+```
+
+To avoid the problem, the selected node can be assigned to a variable, so that the `/` operator will only be used once:
+
+```groovy
+job('example') {
+    configure {
+        def scm = it / scm(class: 'org.MyScm')
+        scm << 'aChild' {
+            serverUrl('http://example.org/product-a')
+        }
+        scm << 'aChild' {
+            serverUrl('http://example.org/product-b')
+        }
+    }
+}
+```
+
+This change leads to the desired result:
+
+```xml
+<project>
+    <scm class='org.MyScm'>
+        <aChild>
+            <serverUrl>http://example.org/product-a</serverUrl>
+        </aChild>
+        <aChild>
+            <serverUrl>http://example.org/product-b</serverUrl>
+        </aChild>
+    </scm>
+</project>
+```
+
+See also [JENKINS-41958](https://issues.jenkins-ci.org/browse/JENKINS-41958).
 
 # Samples
 

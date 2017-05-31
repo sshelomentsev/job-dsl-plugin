@@ -88,6 +88,18 @@ class ColumnsContext extends AbstractExtensibleContext {
     }
 
     /**
+     * Adds a column showing test results.
+     *
+     * @since 1.49
+     */
+    @RequiresPlugin(id = 'extra-columns', minimumVersion = '1.6')
+    void testResult(int format) {
+        columnNodes << new NodeBuilder().'jenkins.plugins.extracolumns.TestResultColumn' {
+            testResultFormat(format)
+        }
+    }
+
+    /**
      * Adds a column for showing that a build has been claimed.
      *
      * @since 1.29
@@ -103,14 +115,9 @@ class ColumnsContext extends AbstractExtensibleContext {
      *
      * @since 1.31
      */
+    @RequiresPlugin(id = 'extra-columns', minimumVersion = '1.16')
     void lastBuildNode() {
-        if (jobManagement.isMinimumPluginVersionInstalled('build-node-column', '0.1')) {
-            jobManagement.logDeprecationWarning('support for build-node-column plugin')
-            columnNodes << new Node(null, 'org.jenkins.plugins.column.LastBuildNodeColumn')
-        } else {
-            jobManagement.requireMinimumPluginVersion('extra-columns', '1.16')
-            columnNodes << new Node(null, 'jenkins.plugins.extracolumns.LastBuildNodeColumn')
-        }
+        columnNodes << new Node(null, 'jenkins.plugins.extracolumns.LastBuildNodeColumn')
     }
 
     /**
@@ -245,5 +252,39 @@ class ColumnsContext extends AbstractExtensibleContext {
         columnNodes << new NodeBuilder().'jenkins.plugins.extracolumns.DisableProjectColumn' {
             useIcon(icon)
         }
+    }
+
+    /**
+     * Adds a column showing job's next launch.
+     *
+     * @since 1.53
+     */
+    @RequiresPlugin(id = 'next-executions', minimumVersion = '1.0.12')
+    void nextLaunch() {
+        columnNodes << new NodeBuilder().'hudson.plugins.nextexecutions.columns.NextExecutionColumn' {
+          triggerClass('hudson.triggers.TimerTrigger')
+        }
+    }
+
+    /**
+     * Adds a column showing job's next possible launch.
+     *
+     * @since 1.53
+     */
+    @RequiresPlugin(id = 'next-executions', minimumVersion = '1.0.12')
+    void nextPossibleLaunch() {
+        columnNodes << new NodeBuilder().'hudson.plugins.nextexecutions.columns.PossibleNextExecutionColumn' {
+          triggerClass('hudson.triggers.SCMTrigger')
+        }
+    }
+
+    /**
+     * Adds a column showing the type of source code management that is used in the project.
+     *
+     * @since 1.56
+     */
+    @RequiresPlugin(id = 'extra-columns', minimumVersion = '1.4')
+    void scmType() {
+        columnNodes << new Node(null, 'jenkins.plugins.extracolumns.SCMTypeColumn')
     }
 }
