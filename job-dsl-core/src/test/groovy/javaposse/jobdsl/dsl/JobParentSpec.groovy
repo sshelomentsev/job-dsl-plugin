@@ -530,18 +530,6 @@ class JobParentSpec extends Specification {
         1 * jobManagement.requireMinimumPluginVersion('jenkins-multijob-plugin', '1.32', true)
     }
 
-    def 'workflow'() {
-        when:
-        WorkflowJob job = parent.workflowJob('test') {
-        }
-
-        then:
-        job.name == 'test'
-        parent.referencedJobs.contains(job)
-        (1.._) * jobManagement.requirePlugin('workflow-aggregator')
-        1 * jobManagement.logDeprecationWarning()
-    }
-
     def 'pipeline'() {
         when:
         WorkflowJob job = parent.pipelineJob('test') {

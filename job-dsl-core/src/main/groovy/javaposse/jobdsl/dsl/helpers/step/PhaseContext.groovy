@@ -29,7 +29,8 @@ class PhaseContext extends AbstractContext {
 
     PhaseContext(JobManagement jobManagement, Item item, String phaseName, String continuationCondition,
                  String executionType, Boolean enableGroovyScript, String scriptText, Boolean isUseScriptFile,
-                 String scriptPath, String bindings, Boolean isScriptOnSlave, Boolean isRunOnSlave, String ignorePhaseResult) {
+                 String scriptPath, String bindings, Boolean isScriptOnSlave, Boolean isRunOnSlave,
+                 String ignorePhaseResult) {
         super(jobManagement)
         this.item = item
         this.phaseName = phaseName

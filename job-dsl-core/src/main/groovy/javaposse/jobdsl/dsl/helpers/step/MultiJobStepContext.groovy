@@ -12,7 +12,7 @@ class MultiJobStepContext extends StepContext {
     ]
 
     private static final List<String> VALID_EXECUTION_TYPES = [
-            'PARALLEL', 'SEQUENTIAL'
+            'PARALLEL', 'SEQUENTIALLY'
     ]
 
     private static final List<String> VALID_IGNORE_PHASE_RESULT_TYPE = [
@@ -47,7 +47,8 @@ class MultiJobStepContext extends StepContext {
     /**
      * Adds a MultiJob phase.
      */
-    void phase(String phaseName, String continuationCondition, String executionType, @DslContext(PhaseContext) Closure phaseContext = null) {
+    void phase(String phaseName, String continuationCondition, String executionType,
+               @DslContext(PhaseContext) Closure phaseContext = null) {
         phase(phaseName, continuationCondition, executionType, 'NEVER', phaseContext)
     }
 
@@ -57,7 +58,7 @@ class MultiJobStepContext extends StepContext {
      * {@code continuationCondition} must be one of {@code 'SUCCESSFUL'}, {@code 'UNSTABLE'}, {@code 'COMPLETED'} or
      * {@code 'FAILURE'}. When version 1.16 or later of the MultiJob plugin is installed, {@code continuationCondition}
      * can also be set to {@code 'ALWAYS'}.
-     * {@code executionType} must be one of {@code 'PARALLEL'}, {@code 'SEQUENTIAL'}.
+     * {@code executionType} must be one of {@code 'PARALLEL'}, {@code 'SEQUENTIALLY'}.
      * {@code ignorePhaseResult} must be one of {@code 'NEVER'}, {@code 'UNSTABLE'}, {@code 'ALWAYS'}.
      */
     void phase(String name, String continuationCondition, String executionType, String ignorePhaseResult,
